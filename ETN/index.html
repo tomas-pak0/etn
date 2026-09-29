@@ -32,9 +32,10 @@
   <div class="stat"><b>◉</b><div><small data-i18n="exploredHeading">IŠTYRINĖTA ŠALIES</small><strong id="countryProgress">–</strong></div></div>
 </section>
 <section class="dashboard settlement-stats">
-  <div class="stat"><b>⌖</b><div><small data-i18n="settlementHeading">ATRASTOS GYVENVIETĖS ŠALYJE</small><strong id="settlementProgress">–</strong></div></div>
-  <div class="stat"><b>◎</b><div><small data-i18n="centerHeading">ATRASTI SAVIVALDYBIŲ CENTRAI</small><strong id="centerProgress">–</strong></div></div>
+  <button class="stat" id="settlementCard" type="button" aria-label="Export discovered settlements"><b>⌖</b><span><small data-i18n="settlementHeading">ATRASTOS GYVENVIETĖS ŠALYJE</small><strong id="settlementProgress">–</strong></span></button>
+  <button class="stat" id="centerCard" type="button" aria-label="Export discovered centers"><b>◎</b><span><small data-i18n="centerHeading">ATRASTI SAVIVALDYBIŲ CENTRAI</small><strong id="centerProgress">–</strong></span></button>
 </section>
+<p class="export-hint" data-i18n="exportHint">Paliesk gyvenviečių arba centrų kortelę, kad išsaugotum atradimų sąrašą CSV formatu.</p>
 <details class="stats-details">
   <summary data-i18n="statsDetails">Tyrinėjimo duomenys</summary>
   <div class="dashboard details-grid">
@@ -50,7 +51,7 @@
 <p class="fineprint" data-i18n="settlementNote">Gyvenviečių skaičius pagal 2026-09-29 „GeoNames“ rinkinį. Gyvenvietė aptinkama priartėjus prie jos taško; ribų ir visų gyvenviečių pilnumas negarantuojamas. Gyventojų duomenys apytiksliai.</p>
 <p class="fineprint" data-i18n="centerNote">Lietuvoje skaičiuojami 60 savivaldybių centrai (vienas miestas gali būti kelių savivaldybių centras). Kitose šalyse – „GeoNames“ pažymėti vietinių administracinių vienetų centrai; duomenys gali būti nepilni. Centras aptinkamas priartėjus prie jo taško.</p>
 <small class="data-credit">Gyvenviečių ir šalių duomenys © <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></small>
-<small class="build-version">ETN 0.6.7</small>
+<small class="build-version">ETN 0.6.8</small>
 </main>
 <div id="discoveryDialog" class="discovery-backdrop" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle" hidden>
   <div class="discovery-card"><p class="discovery-kicker" id="discoveryTitle"></p><h2 id="discoveryName"></h2><dl id="discoveryFacts"></dl>

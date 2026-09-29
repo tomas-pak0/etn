@@ -7,19 +7,20 @@
   const names=type=>{try{return new Intl.DisplayNames([locale],{type})}catch{return null}};
   const regions=names('region'),languages=names('language'),currencies=names('currency');
   const tileCache=new Map();
-  let index=null,indexPromise=null,adminPromise=null,dbPromise=null,chain=Promise.resolve(),activeEvent=null,discoveryError=false;
+  let index=null,indexPromise=null,adminPromise=null,dbPromise=null,chain=Promise.resolve(),activeEvent=null,discoveryError=false,dismissTimer=null;
   let centerIndex=null,centerPromise=null,lastCountCode=null;
   const centerByPlace=new Map(),migratedCountries=new Set(),seenCenterUnits=new Set();
-  const fallback={countries:new Set(),places:new Set(),centers:new Set(),events:[]};
+  const fallback={countries:new Set(),places:new Set(),centers:new Set(),events:[],records:[]};
   function openDB(){
     if(dbPromise)return dbPromise;
     dbPromise=new Promise(resolve=>{
       if(!window.indexedDB){resolve(null);return;}
-      const request=indexedDB.open('etn-discoveries',1);
+      const request=indexedDB.open('etn-discoveries',2);
       request.onupgradeneeded=()=>{
         const db=request.result;
-        db.createObjectStore('visited');
-        const queue=db.createObjectStore('queue',{keyPath:'id',autoIncrement:true});
+        if(!db.objectStoreNames.contains('visited'))db.createObjectStore('visited');
+        if(!db.objectStoreNames.contains('queue'))db.createObjectStore('queue',{keyPath:'id',autoIncrement:true});
+        if(!db.objectStoreNames.contains('records'))db.createObjectStore('records',{keyPath:'key'});
       };
       request.onsuccess=()=>resolve(request.result);
       request.onerror=()=>resolve(null);
@@ -43,31 +44,35 @@
       if(!db){
         if(fallback.places.has(key)||fallback.countries.has(key)){resolve(false);return;}
         (key.startsWith('p:')?fallback.places:fallback.countries).add(key);
-        fallback.events.push({...event,id:fallback.events.length+1});resolve(true);return;
+        fallback.events.push({...event,id:fallback.events.length+1});
+        if(key.startsWith('p:'))fallback.records.push({key,...event});resolve(true);return;
       }
-      const tx=db.transaction(['visited','queue'],'readwrite');
+      const tx=db.transaction(['visited','queue','records'],'readwrite');
       const store=tx.objectStore('visited');
       let inserted=false;
       store.get(key).onsuccess=e=>{
         if(e.target.result)return;
-        store.put(true,key);tx.objectStore('queue').add(event);inserted=true;
+        store.put(true,key);tx.objectStore('queue').add(event);
+        if(key.startsWith('p:'))tx.objectStore('records').put({key,...event});
+        inserted=true;
       };
       tx.oncomplete=()=>resolve(inserted);
       tx.onerror=()=>reject(tx.error);
       tx.onabort=()=>reject(tx.error);
     }));
   }
-  function markCenter(key){
+  function markCenter(key,record){
     if(seenCenterUnits.has(key))return Promise.resolve(false);
     return openDB().then(db=>new Promise((resolve,reject)=>{
       if(!db){
         const added=!fallback.centers.has(key);
-        fallback.centers.add(key);seenCenterUnits.add(key);resolve(added);return;
+        fallback.centers.add(key);seenCenterUnits.add(key);
+        if(added)fallback.records.push({key,...record});resolve(added);return;
       }
-      const tx=db.transaction('visited','readwrite');
+      const tx=db.transaction(['visited','records'],'readwrite');
       let inserted=false;
       tx.objectStore('visited').get(key).onsuccess=e=>{
-        if(!e.target.result){tx.objectStore('visited').put(true,key);inserted=true;}
+        if(!e.target.result){tx.objectStore('visited').put(true,key);tx.objectStore('records').put({key,...record});inserted=true;}
       };
       tx.oncomplete=()=>{seenCenterUnits.add(key);resolve(inserted)};
       tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
@@ -219,25 +224,29 @@
       [t('country'),localizedCountry(event.code,index?.countries[event.code]?.name)],
       ...(event.admin1?[[event.code==='LT'?t('county'):t('region'),event.admin1]]:[]),
       ...(event.admin2?[[event.code==='LT'?t('municipality'):t('district'),event.admin2]]:[]),
-      ...(event.population?[[t('population'),`${t('about')} ${number.format(event.population)}`]]:[])
+      ...(event.population?[[t('population'),`${t('about')} ${number.format(event.population)} · GeoNames ${index?.snapshot||'2026-09-29'} (${t('populationYearUnknown')})`]]:[])
     ];
     const list=$('discoveryFacts');list.replaceChildren();
     for(const [label,value] of details){const item=document.createElement('div');
       const term=document.createElement('dt'),description=document.createElement('dd');
       term.textContent=label;description.textContent=value;item.append(term,description);list.append(item);}
     modal.hidden=false;$('discoveryClose').focus();
+    clearTimeout(dismissTimer);
+    dismissTimer=setTimeout(dismissEvent,10000);
   }
-  $('discoveryClose').onclick=async()=>{
+  async function dismissEvent(){
     if(!activeEvent)return;
+    clearTimeout(dismissTimer);
     await removeEvent(activeEvent.id);activeEvent=null;
     $('discoveryDialog').hidden=true;showNext();
-  };
+  }
+  $('discoveryClose').onclick=dismissEvent;
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)showNext()});
-  async function observe(lat,lon,feature){
+  async function observe(lat,lon,feature,fixTime){
     const snapshot=await loadIndex();if(!snapshot)throw Error('Settlement index unavailable');
     if(!feature)return;
     const code=feature.properties.code;if(!code)return;
-    if(await transactVisit(`c:${code}`,{type:'country',code,name:feature.properties.name}))showNext();
+    if(await transactVisit(`c:${code}`,{type:'country',code,name:feature.properties.name,discoveredAt:fixTime}))showNext();
     const [admin1,admin2]=await loadAdmin();
     const candidates=new Map();
     for(const tile of near(lat,lon)){
@@ -252,32 +261,60 @@
     }
     for(const row of candidates.values()){
       if(await transactVisit(`p:${code}:${row[0]}`,{type:'settlement',code,name:row[1],
-        admin1:admin1[`${code}.${row[6]}`]||'',admin2:admin2[`${code}.${row[6]}.${row[7]}`]||'',population:row[8]})){
+        admin1:admin1[`${code}.${row[6]}`]||'',admin2:admin2[`${code}.${row[6]}.${row[7]}`]||'',population:row[8],discoveredAt:fixTime})){
         updateCount(code);showNext();
       }
     }
     await loadCenters();
     if(centerIndex){
       await migrateCountry(code);
-      const foundCenters=new Set();
+      const foundCenters=new Map();
       for(const tile of near(lat,lon))for(const row of centerIndex.tiles[tile]||[]){
         if(row[5]!==code)continue;
         const x=(lon-row[4])*111320*Math.cos(lat*Math.PI/180);
         const y=(lat-row[3])*111320;
-        if(Math.hypot(x,y)<=1000)foundCenters.add(row[0]);
+        if(Math.hypot(x,y)<=1000)foundCenters.set(row[0],row);
       }
       let changed=false;
-      for(const unit of foundCenters)changed=await markCenter(`m:${unit}`)||changed;
+      for(const [unit,row] of foundCenters)changed=await markCenter(`m:${unit}`,{type:'center',code,name:row[2],admin2:row[6],discoveredAt:fixTime})||changed;
       if(changed)updateCount(code);
     }
   }
-  function enqueue(lat,lon,feature){
-    chain=chain.then(()=>observe(lat,lon,feature)).catch(()=>{discoveryError=true});
+  function enqueue(lat,lon,feature,fixTime=Date.now()){
+    chain=chain.then(()=>observe(lat,lon,feature,fixTime)).catch(()=>{discoveryError=true});
     return chain;
   }
   function flush(){return chain.then(()=>{
     if(discoveryError){discoveryError=false;throw Error('Discovery data could not be stored');}
   });}
+  async function exportList(type){
+    await flush();
+    const db=await openDB();
+    const records=db?await new Promise(resolve=>{
+      const request=db.transaction('records','readonly').objectStore('records').getAll();
+      request.onsuccess=()=>resolve(request.result||[]);
+      request.onerror=()=>resolve([]);
+    }):fallback.records;
+    const selected=records.filter(item=>item.type===type)
+      .sort((a,b)=>(a.discoveredAt||0)-(b.discoveredAt||0));
+    const quote=value=>`"${String(value??'').replaceAll('"','""')}"`;
+    const rows=[['GeoNames ID / centras','Šalis','Pavadinimas','Apskritis / regionas','Savivaldybė / rajonas','Atrasta (vietos laiku)','Atrasta (ISO UTC)','Apytiksliai gyventojų','Rinkinio data'].map(quote).join(',')];
+    for(const item of selected){
+      const date=item.discoveredAt?new Date(item.discoveredAt):null;
+      rows.push([item.key,item.code,item.name,item.admin1,item.admin2,
+        date?.toLocaleString(locale)||'',date?.toISOString()||'',item.population||'',index?.snapshot||'2026-09-29'].map(quote).join(','));
+    }
+    const content='\uFEFF'+rows.join('\r\n')+'\r\n';
+    const filename=`ETN-${type==='center'?'centrai':'gyvenvietes'}-${new Date().toISOString().slice(0,10)}.csv`;
+    if(window.ETNNative?.exportCsv)window.ETNNative.exportCsv(filename,content);
+    else{
+      const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));
+      const link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }
+  }
+  $('settlementCard').onclick=()=>exportList('settlement');
+  $('centerCard').onclick=()=>exportList('center');
   loadIndex().then(value=>{if(value)value.tilesSet=new Set(value.tiles);showNext()});
   loadCenters();
   window.ETNDiscoveries={enqueue,flush,updateCount};

@@ -54,9 +54,9 @@
   let countries=[],currentCountry=null,progressTimer=null,lastProgressAt=0,progressCountry=null,bordersReady=false;
   const discovery=window.ETNDiscoveries;
   const waitingDiscoveries=[];
-  function discoverFix(lat,lon){
-    if(!bordersReady){waitingDiscoveries.push([lat,lon]);return;}
-    discovery.enqueue(lat,lon,findCountry([lat,lon]));
+  function discoverFix(lat,lon,time=Date.now()){
+    if(!bordersReady){waitingDiscoveries.push([lat,lon,time]);return;}
+    discovery.enqueue(lat,lon,findCountry([lat,lon]),time);
   }
   let worldActive=false;
   const FOLLOW_KEY='etn-follow-position-v1';
@@ -142,7 +142,7 @@
       countries=data.features.map(prepareCountry);
       if(marker)setCountry(marker.getLatLng());
       bordersReady=true;
-      for(const [lat,lon] of waitingDiscoveries)discoverFix(lat,lon);
+      for(const [lat,lon,time] of waitingDiscoveries)discoverFix(lat,lon,time);
       waitingDiscoveries.length=0;
       updateBorders();
     }catch{
@@ -502,7 +502,7 @@
       $('status').textContent=t('gpsJump');return;
     }
     latestPosition=point;
-    discoverFix(lat,lon);
+    discoverFix(lat,lon,now);
     if(render&&!marker){
       marker=L.circleMarker(point,{radius:8,color:'#fff',weight:3,fillColor:'#dd785f',fillOpacity:1}).addTo(map);
       if(followPosition)map.fitBounds(locationBounds(point),{padding:[40,40],animate:false});

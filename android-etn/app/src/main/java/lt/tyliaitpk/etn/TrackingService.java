@@ -38,6 +38,7 @@ public class TrackingService extends Service implements LocationListener {
     private LocationManager locations;
     private long lastGpsAt;
     private float lastGpsAccuracy = Float.MAX_VALUE;
+    private BackgroundDiscoveries discoveries;
 
     static boolean isRunning(Context context) {
         return context.getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("running", false);
@@ -115,6 +116,7 @@ public class TrackingService extends Service implements LocationListener {
             if (Build.VERSION.SDK_INT >= 29)
                 startForeground(1001, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
             else startForeground(1001, notification());
+            if (discoveries == null) discoveries = new BackgroundDiscoveries(this);
             if (locations == null) {
                 locations = (LocationManager) getSystemService(LOCATION_SERVICE);
                 for (String provider : new String[]{LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER}) {
@@ -141,6 +143,7 @@ public class TrackingService extends Service implements LocationListener {
         if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
             lastGpsAt = now; lastGpsAccuracy = location.getAccuracy();
         } else if (now - lastGpsAt < 5000 && location.getAccuracy() >= lastGpsAccuracy) return;
+        if (discoveries != null) discoveries.accept(location.getLatitude(), location.getLongitude());
         synchronized (FILE_LOCK) {
             try {
                 long previous = getSharedPreferences(PREFS, MODE_PRIVATE).getLong("lastId", 0);
@@ -170,6 +173,7 @@ public class TrackingService extends Service implements LocationListener {
         stopForeground(STOP_FOREGROUND_REMOVE); stopSelf();
     }
     @Override public void onDestroy() {
+        if (discoveries != null) discoveries.close();
         if (locations != null) locations.removeUpdates(this);
         setRunning(false);
         super.onDestroy();

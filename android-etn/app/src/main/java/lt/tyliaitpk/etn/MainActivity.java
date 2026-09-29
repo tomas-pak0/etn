@@ -29,6 +29,9 @@ public class MainActivity extends Activity {
     private static final int LOCATION_REQUEST = 11;
     private static final int TRACK_REQUEST = 12;
     private static final int NOTIFICATION_REQUEST = 13;
+    private static final int EXPORT_REQUEST = 14;
+    private String pendingExport;
+    static volatile boolean visible;
     private WebView webView;
     private GeolocationPermissions.Callback pendingGeolocation;
     private String pendingOrigin;
@@ -65,6 +68,16 @@ public class MainActivity extends Activity {
             @JavascriptInterface public void stopTracking() {
                 runOnUiThread(() -> startService(new Intent(MainActivity.this, TrackingService.class)
                     .setAction(TrackingService.ACTION_STOP)));
+            }
+            @JavascriptInterface public void exportCsv(String name, String csv) {
+                runOnUiThread(() -> {
+                    pendingExport = csv;
+                    Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    save.addCategory(Intent.CATEGORY_OPENABLE);
+                    save.setType("text/csv");
+                    save.putExtra(Intent.EXTRA_TITLE, name);
+                    startActivityForResult(save, EXPORT_REQUEST);
+                });
             }
         }, "ETNNative");
         webView.setWebViewClient(new WebViewClient() {
@@ -161,7 +174,22 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        visible = true;
         if (webView != null) webView.evaluateJavascript("window.ETNSyncNative&&window.ETNSyncNative()", null);
+    }
+    @Override protected void onPause() {
+        visible = false;
+        super.onPause();
+    }
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != EXPORT_REQUEST) return;
+        if (resultCode == RESULT_OK && data != null && data.getData() != null && pendingExport != null) {
+            try (java.io.OutputStream output = getContentResolver().openOutputStream(data.getData())) {
+                if (output != null) output.write(pendingExport.getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ignored) {}
+        }
+        pendingExport = null;
     }
 
     @Override public void onBackPressed() {

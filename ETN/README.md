@@ -27,3 +27,9 @@ Duomenys: GeoNames, CC BY 4.0, https://www.geonames.org/ . Žemėlapio plytelės
 Atskira šalies kortelė rodo aptiktų centrų skaičių, bendrą rinkinio skaičių ir procentą. Lietuvoje sąrašas apima visų 60 savivaldybių centrus; 55 skirtingi gyvenviečių taškai atitinka 60 savivaldybių, nes kai kurių miestų ir rajonų administracijos yra tame pačiame mieste. Vienas pasiekimas gali padidinti skaitiklį dviem, tačiau gyvenvietė sveikinama tik vieną kartą. Senojoje įrenginio istorijoje jau aptiktos gyvenvietės automatiškai įskaitomos į centrų pažangą.
 
 Kitose šalyse skaičiuojami GeoNames pažymėti PPLA2–PPLA5 vietinių administracinių vienetų centrai. Šių lygių reikšmė skiriasi pagal valstybę ir GeoNames aprėptis nėra pilna; procentas yra nuo šio rinkinio įrašų, ne nuo oficialaus šalies savivaldybių skaičiaus. Centras aptinkamas priartėjus iki 1 km nuo nurodyto taško. Duomenys: GeoNames, CC BY 4.0.
+
+## Atradimų sąrašai ir pranešimai (0.6.8)
+
+Gyvenviečių ir administracinių centrų kortelės išdėstytos greta. Jas palietus eksportuojamas atitinkamas CSV sąrašas: vietovės pavadinimas, šalis, administraciniai duomenys ir GPS taško atradimo laikas. Nauji atradimai saugomi `IndexedDB` įrašų lentelėje; senesnės versijos saugojo tik jau atrasto objekto ID, todėl jų atradimo laiko atkurti neįmanoma. CSV sąraše senesni įrašai pasirodys tik iš naujo aplankius jų vietą ir gali neturėti pradinės datos. Android programėlėje išsaugojimo vieta pasirenkama sistemos lange.
+
+Atradimo langas automatiškai užsidaro po 10 s. Gyventojų skaičius yra apytikslis iš 2026-09-29 GeoNames rinkinio; konkretaus kiekvienos gyvenvietės įverčio metų šaltinis nenurodo. Jei GPS sekimas tęsiamas Android fone, vietinė paslauga tikrina supakuotus šalių, gyvenviečių ir centrų duomenis ir rodo atskirą sistemos pranešimą apie naują įvykį, kai pranešimų leidimas suteiktas. Išsaugojimas naršyklėje įvyksta grįžus į programėlę ir apdorojus GPS eilę.
