@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d11"><title>ETN · Explore the Neighborhood</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">E<span>·</span></span><div><strong>ETN</strong><small>Explore the Neighborhood</small></div></div>
+  <div class="header-tools"><span class="badge" data-i18n="badge">ATRASK SAVO APLINKĄ</span>
+    <label class="language-picker"><span class="sr-only" data-i18n="languageLabel">Kalba</span>
+      <select id="language" aria-label="Language / Kalba"><option value="lt">🇱🇹 LT</option><option value="uk">🇺🇦 UK</option><option value="lv">🇱🇻 LV</option><option value="pl">🇵🇱 PL</option><option value="en">🇬🇧 EN</option><option value="de">🇩🇪 DE</option><option value="es">🇪🇸 ES</option><option value="fr">🇫🇷 FR</option></select>
+    </label>
+  </div>
+</header>
+<main>
+<section class="intro"><p class="eyebrow" data-i18n="eyebrow">TAVO PASAULIS · PO ŽINGSNĮ</p>
+<h1><span data-i18n="headlineFirst">Kur nueisi, ten</span><br><em data-i18n="headlineSecond">atsivers žemėlapis.</em></h1>
+<p data-i18n="intro">Eik arba važiuok ir atidenk žemėlapį. Kiekvienoje kryptyje spindulys vienodas – iki 5 km. Atrastos vietos lieka tavo įrenginyje.</p></section>
+<section class="map-shell" aria-label="ETN map"><div id="map" role="region" aria-label="ETN map with discovery fog"></div>
+  <div id="worldView" class="world-view" role="region" aria-label="World map from pole to pole" hidden><canvas id="worldCanvas" aria-hidden="true"></canvas></div>
+  <div class="map-label"><i></i><span id="mapLabel" data-i18n="unexplored">NEATRASTA TERITORIJA</span></div>
+  <button id="recenter" class="recenter" type="button" aria-label="Show my location">⌖</button>
+  <button id="worldButton" class="world-button" type="button" aria-label="Show the whole world" aria-pressed="false" title="World map">◎</button>
+  <div id="countryPicker" class="country-picker" role="dialog" aria-label="Choose a country" hidden>
+    <div class="country-picker-head"><strong data-i18n="chooseCountry">Pasirink šalį</strong><button id="closeCountries" type="button" aria-label="Close">×</button></div><div id="countryOptions" class="country-options"></div>
+  </div>
+</section>
+<section class="dashboard summary-stats">
+  <button class="stat stat-country" id="countryCard" type="button" aria-label="Zoom to country"><b id="countryFlag" aria-hidden="true">🌐</b><span><small data-i18n="countryHeading">DABARTINĖ ŠALIS · PASPAUSK</small><strong id="country" data-i18n="waitingLocation">Laukiama vietos</strong></span></button>
+  <div class="stat"><b>◉</b><div><small data-i18n="exploredHeading">IŠTYRINĖTA ŠALIES</small><strong id="countryProgress">–</strong></div></div>
+</section>
+<section class="dashboard settlement-stats"><div class="stat"><b>⌖</b><div><small data-i18n="settlementHeading">ATRASTOS GYVENVIETĖS ŠALYJE</small><strong id="settlementProgress">–</strong></div></div></section>
+<details class="stats-details">
+  <summary data-i18n="statsDetails">Tyrinėjimo duomenys</summary>
+  <div class="dashboard details-grid">
+  <div class="stat"><b>◉</b><div><small data-i18n="radiusHeading">ATIDENGIMO SPINDULYS</small><strong id="radius">0,5 km</strong></div></div>
+  <div class="stat"><b>⌁</b><div><small data-i18n="terrainHeading">KRYPTYS</small><strong id="terrain" data-i18n="allDirections">Visomis kryptimis</strong></div></div>
+  <div class="stat"><b>↗</b><div><small data-i18n="pointsHeading">TYRINĖJIMO TAŠKAI</small><strong id="count">0</strong></div></div>
+  <div class="stat"><b>◎</b><div><small data-i18n="accuracyHeading">VIETOS TIKSLUMAS</small><strong id="accuracy">–</strong></div></div>
+  </div>
+</details>
+<div class="actions"><button id="start" class="primary" type="button" data-i18n="start">Pradėti tyrinėjimą ↗</button><button id="stop" type="button" disabled data-i18n="stop">Stabdyti</button></div>
+<p id="status" role="status" data-i18n="initialStatus">Tyrinėjimas dar nepradėtas. Leisk naudoti buvimo vietą, kad žemėlapis atsivertų.</p>
+<p class="fineprint" data-i18n="fineprint">Vietos istorija saugoma tik šiame įrenginyje. Žemėlapis atidengiamas tolygiai nuo 0,5 km iki 5 km, be vietovės klasifikavimo. Android versija, kai įjungtas tyrinėjimas, fone renka GPS taškus ir rodo pranešimą. Šalių ribos ir procentas apytiksliai pagal Natural Earth. Žemėlapiui reikia interneto.</p>
+<p class="fineprint" data-i18n="settlementNote">Gyvenviečių skaičius pagal 2026-09-29 „GeoNames“ rinkinį. Gyvenvietė aptinkama priartėjus prie jos taško; ribų ir visų gyvenviečių pilnumas negarantuojamas. Gyventojų duomenys apytiksliai.</p>
+<small class="data-credit">Gyvenviečių ir šalių duomenys © <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></small>
+<small class="build-version">ETN 0.6.5</small>
+</main>
+<div id="discoveryDialog" class="discovery-backdrop" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle" hidden>
+  <div class="discovery-card"><p class="discovery-kicker" id="discoveryTitle"></p><h2 id="discoveryName"></h2><dl id="discoveryFacts"></dl>
+    <button id="discoveryClose" type="button" data-i18n="continueExploring">Tęsti tyrinėjimą</button>
+  </div>
+</div>
+<script src="vendor/leaflet/leaflet.js"></script><script src="i18n.js"></script><script src="discoveries.js"></script><script src="app.js"></script>
+</body></html>
