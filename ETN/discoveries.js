@@ -8,7 +8,9 @@
   const regions=names('region'),languages=names('language'),currencies=names('currency');
   const tileCache=new Map();
   let index=null,indexPromise=null,adminPromise=null,dbPromise=null,chain=Promise.resolve(),activeEvent=null,discoveryError=false;
-  const fallback={countries:new Set(),places:new Set(),events:[]};
+  let centerIndex=null,centerPromise=null,lastCountCode=null;
+  const centerByPlace=new Map(),migratedCountries=new Set();
+  const fallback={countries:new Set(),places:new Set(),centers:new Set(),events:[]};
   function openDB(){
     if(dbPromise)return dbPromise;
     dbPromise=new Promise(resolve=>{
@@ -24,12 +26,13 @@
     });
     return dbPromise;
   }
-  async function count(code){
+  async function count(prefix,code){
     const db=await openDB();
-    if(!db)return [...fallback.places].filter(key=>key.startsWith(`p:${code}:`)).length;
+    if(!db)return [...(prefix==='p'?fallback.places:fallback.centers)]
+      .filter(key=>key.startsWith(`${prefix}:${code}:`)).length;
     return new Promise(resolve=>{
       const tx=db.transaction('visited','readonly');
-      const range=IDBKeyRange.bound(`p:${code}:`,`p:${code}:\uffff`);
+      const range=IDBKeyRange.bound(`${prefix}:${code}:`,`${prefix}:${code}:\uffff`);
       const req=tx.objectStore('visited').count(range);
       req.onsuccess=()=>resolve(req.result);
       req.onerror=()=>resolve(0);
@@ -52,6 +55,14 @@
       tx.oncomplete=()=>resolve(inserted);
       tx.onerror=()=>reject(tx.error);
       tx.onabort=()=>reject(tx.error);
+    }));
+  }
+  function markCenter(key){
+    return openDB().then(db=>new Promise((resolve,reject)=>{
+      if(!db){fallback.centers.add(key);resolve();return;}
+      const tx=db.transaction('visited','readwrite');
+      tx.objectStore('visited').put(true,key);
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
     }));
   }
   function firstEvent(){
@@ -77,6 +88,43 @@
   function loadIndex(){
     if(!indexPromise)indexPromise=unpack('data/places-index.bin').then(value=>(index=value,updateCount(),value)).catch(()=>null);
     return indexPromise;
+  }
+  function loadCenters(){
+    if(!centerPromise)centerPromise=unpack('data/centers-index.bin').then(value=>{
+      centerIndex=value;
+      for(const rows of Object.values(value.tiles))for(const row of rows){
+        const placeKey=`${row[5]}:${row[1]}`;
+        if(!centerByPlace.has(placeKey))centerByPlace.set(placeKey,[]);
+        centerByPlace.get(placeKey).push(row[0]);
+      }
+      updateCount();
+      return value;
+    }).catch(()=>null);
+    return centerPromise;
+  }
+  async function migrateCountry(code){
+    if(!centerIndex||migratedCountries.has(code))return;
+    migratedCountries.add(code);
+    const db=await openDB();
+    if(!db){
+      for(const key of fallback.places){
+        if(!key.startsWith(`p:${code}:`))continue;
+        for(const unit of centerByPlace.get(key.slice(2))||[])fallback.centers.add(`m:${unit}`);
+      }
+      return;
+    }
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('visited','readwrite'),store=tx.objectStore('visited');
+      const range=IDBKeyRange.bound(`p:${code}:`,`p:${code}:\uffff`);
+      store.openKeyCursor(range).onsuccess=e=>{
+        const cursor=e.target.result;
+        if(!cursor)return;
+        for(const unit of centerByPlace.get(String(cursor.key).slice(2))||[])
+          store.put(true,`m:${unit}`);
+        cursor.continue();
+      };
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+    });
   }
   function loadAdmin(){
     if(!adminPromise)adminPromise=Promise.all([unpack('data/admin1.bin'),unpack('data/admin2.bin')]).catch(()=>[{},{}]);
@@ -117,13 +165,23 @@
   }
   async function updateCount(code=window.ETNCurrentCountry?.properties.code){
     const target=$('settlementProgress');
-    if(!target)return;
-    if(!code){target.textContent='–';return;}
-    if(!index){target.textContent=t('calculating');return;}
+    const centerTarget=$('centerProgress');
+    if(!target||!centerTarget)return;
+    lastCountCode=code;
+    if(!code){target.textContent='–';centerTarget.textContent='–';return;}
+    if(!index){target.textContent=t('calculating');centerTarget.textContent=t('calculating');return;}
     const total=index.counts[code]||0;
-    if(!total){target.textContent=t('noSettlementData');return;}
-    const found=await count(code);
-    target.textContent=`${number.format(found)} / ${number.format(total)} · ${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(100*found/total)} %`;
+    const format=(found,total)=>`${number.format(found)} / ${number.format(total)} · ${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(100*found/total)} %`;
+    if(total){
+      const found=await count('p',code);
+      if(lastCountCode===code)target.textContent=format(found,total);
+    }else target.textContent=t('noSettlementData');
+    if(!centerIndex){centerTarget.textContent=t('calculating');return;}
+    await migrateCountry(code);
+    const centerTotal=centerIndex.counts[code]||0;
+    if(!centerTotal){centerTarget.textContent=t('noCenterData');return;}
+    const centers=await count('m',code);
+    if(lastCountCode===code)centerTarget.textContent=format(centers,centerTotal);
   }
   const localizedCountry=(code,fallbackName)=>{try{return regions?.of(code)||fallbackName||code}catch{return fallbackName||code}};
   function countryDetails(code){
@@ -190,6 +248,19 @@
         updateCount(code);showNext();
       }
     }
+    await loadCenters();
+    if(centerIndex){
+      await migrateCountry(code);
+      const foundCenters=new Set();
+      for(const tile of near(lat,lon))for(const row of centerIndex.tiles[tile]||[]){
+        if(row[5]!==code)continue;
+        const x=(lon-row[4])*111320*Math.cos(lat*Math.PI/180);
+        const y=(lat-row[3])*111320;
+        if(Math.hypot(x,y)<=1000)foundCenters.add(row[0]);
+      }
+      for(const unit of foundCenters)await markCenter(`m:${unit}`);
+      if(foundCenters.size)updateCount(code);
+    }
   }
   function enqueue(lat,lon,feature){
     chain=chain.then(()=>observe(lat,lon,feature)).catch(()=>{discoveryError=true});
@@ -199,5 +270,6 @@
     if(discoveryError){discoveryError=false;throw Error('Discovery data could not be stored');}
   });}
   loadIndex().then(value=>{if(value)value.tilesSet=new Set(value.tiles);showNext()});
+  loadCenters();
   window.ETNDiscoveries={enqueue,flush,updateCount};
 })();
