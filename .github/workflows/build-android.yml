@@ -1,0 +1,43 @@
+name: Build ETN Android APK
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-android.yml'
+      - 'ETN/**'
+      - 'android-etn/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Restore bundled world data and overlay current source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/etn"
+          gh release download v0.6.7 --repo tomas-pak0/etn -p ETN-0.6.7-source.zip -D "$RUNNER_TEMP"
+          unzip -q "$RUNNER_TEMP/ETN-0.6.7-source.zip" -d "$RUNNER_TEMP/etn"
+          cp -a ETN/. "$RUNNER_TEMP/etn/ETN/"
+          cp -a android-etn/. "$RUNNER_TEMP/etn/android-etn/"
+          mkdir -p "$RUNNER_TEMP/etn/android-etn/app/src/main/assets"
+          cp -a "$RUNNER_TEMP/etn/ETN/." "$RUNNER_TEMP/etn/android-etn/app/src/main/assets/"
+      - name: Build
+        working-directory: ${{ runner.temp }}/etn/android-etn
+        run: gradle :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-android-debug
+          path: ${{ runner.temp }}/etn/android-etn/app/build/outputs/apk/debug/app-debug.apk
