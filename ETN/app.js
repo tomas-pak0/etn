@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const KEY='etn-explored-v1', LOOPS_KEY='etn-enclosed-v1';
+  const PROGRESS_KEY='etn-country-progress-v1';
   const MAX_ACCURACY=100, MAX_POINTS=5000, MAX_LOOPS=100;
   const MAX_RADIUS=5000, CLEAR_RADIUS=500;
   const $=id=>document.getElementById(id);
@@ -52,6 +53,11 @@
   let importing=false;
   try{localStorage.setItem(KEY,JSON.stringify(points))}catch{}
   let countries=[],currentCountry=null,progressTimer=null,lastProgressAt=0,progressCountry=null,bordersReady=false;
+  let maximumProgress={};
+  try{
+    const saved=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}');
+    if(saved&&typeof saved==='object'&&!Array.isArray(saved))maximumProgress=saved;
+  }catch{}
   const discovery=window.ETNDiscoveries;
   const waitingDiscoveries=[];
   function discoverFix(lat,lon,time=Date.now()){
@@ -276,7 +282,15 @@
       progressTimer=null;
       if(!currentCountry)return;
       lastProgressAt=Date.now();
-      const value=exploredPercent(currentCountry);
+      const code=currentCountry.properties.code;
+      const calculated=exploredPercent(currentCountry);
+      const previous=Number(maximumProgress[code])||0;
+      const value=Math.max(previous,calculated);
+      if(value>previous){
+        maximumProgress[code]=value;
+        try{localStorage.setItem(PROGRESS_KEY,JSON.stringify(maximumProgress));}
+        catch{$('status').textContent=t('noStorage');}
+      }
       $('countryProgress').textContent=value===0?'0 %':
         value.toLocaleString(locale,{minimumFractionDigits:5,maximumFractionDigits:5})+' %';
     },Math.max(300,10000-(Date.now()-lastProgressAt)));
