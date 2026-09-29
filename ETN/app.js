@@ -3,7 +3,7 @@
   'use strict';
   const KEY='etn-explored-v1', LOOPS_KEY='etn-enclosed-v1';
   const PROGRESS_KEY='etn-country-progress-v1';
-  const MAX_ACCURACY=100, MAX_POINTS=5000, MAX_LOOPS=100;
+  const MAX_ACCURACY=100;
   const MAX_RADIUS=5000, CLEAR_RADIUS=500;
   const $=id=>document.getElementById(id);
   const {t,locale}=window.ETNI18n;
@@ -34,7 +34,7 @@
   function load(){
     try{
       const data=JSON.parse(localStorage.getItem(KEY)||'[]');
-      return Array.isArray(data)?data.slice(-MAX_POINTS).filter(p=>
+      return Array.isArray(data)?data.filter(p=>
         Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&
         Number.isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180)
         .map(p=>[p[0],p[1]]):[];
@@ -43,15 +43,114 @@
   function loadLoops(){
     try{
       const saved=JSON.parse(localStorage.getItem(LOOPS_KEY)||'[]');
-      return Array.isArray(saved)?saved.slice(-MAX_LOOPS).filter(ring=>
-        Array.isArray(ring)&&ring.length>=7&&ring.length<=MAX_POINTS&&
+      return Array.isArray(saved)?saved.filter(ring=>
+        Array.isArray(ring)&&ring.length>=7&&ring.length<=1500&&
         ring.every(p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&
           Number.isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180)):[];
     }catch{return [];}
   }
-  let points=load(),loops=loadLoops(),trail=[],watcher=null,lastFix=null,latestPosition=null,marker=null,queued=false;
+  let points=[],loops=[],trail=[],watcher=null,lastFix=null,latestPosition=null,marker=null,queued=false;
   let importing=false;
-  try{localStorage.setItem(KEY,JSON.stringify(points))}catch{}
+  const coverageKeys=new Set(),pendingCoverage=new Map(),pendingRaw=[],pendingLoops=[];
+  let database=null,storageReady=false,recordCount=0,writeChain=Promise.resolve(),writeTimer=null;
+  // 75 m buckets keep one fog sample per visited place; the full fix history
+  // stays in IndexedDB and is never loaded into the rendering loop.
+  function coverageKey(lat,lon){
+    return Math.floor(lat*111195/75)+','+
+      Math.floor(lon*111195*Math.max(.01,Math.cos(lat*Math.PI/180))/75);
+  }
+  function transactionDone(tx){
+    return new Promise((resolve,reject)=>{
+      tx.oncomplete=resolve;
+      tx.onerror=()=>reject(tx.error||Error('Storage failed'));
+      tx.onabort=()=>reject(tx.error||Error('Storage aborted'));
+    });
+  }
+  function openDatabase(){
+    return new Promise((resolve,reject)=>{
+      const request=indexedDB.open('etn-history',1);
+      request.onupgradeneeded=()=>{
+        const db=request.result;
+        db.createObjectStore('fixes',{keyPath:'id',autoIncrement:true});
+        db.createObjectStore('coverage',{keyPath:'key'});
+        db.createObjectStore('loops',{autoIncrement:true});
+      };
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error);
+    });
+  }
+  function readAll(store){
+    return new Promise((resolve,reject)=>{
+      const request=database.transaction(store,'readonly').objectStore(store).getAll();
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error);
+    });
+  }
+  async function initializeStorage(){
+    try{
+      database=await openDatabase();
+      const legacyPoints=load(),legacyLoops=loadLoops();
+      if(legacyPoints.length||legacyLoops.length){
+        const tx=database.transaction(['fixes','coverage','loops'],'readwrite');
+        const fixes=tx.objectStore('fixes'),coverage=tx.objectStore('coverage');
+        for(const [lat,lon] of legacyPoints){
+          fixes.add({lat,lon,time:null,legacy:true});
+          coverage.put({key:coverageKey(lat,lon),lat,lon});
+        }
+        for(const ring of legacyLoops)tx.objectStore('loops').add(ring);
+        await transactionDone(tx);
+        localStorage.removeItem(KEY);
+        localStorage.removeItem(LOOPS_KEY);
+      }
+      const [savedCoverage,savedLoops]=await Promise.all([
+        readAll('coverage'),readAll('loops')]);
+      points=savedCoverage.map(({lat,lon,key})=>{
+        coverageKeys.add(key);return [lat,lon];
+      });
+      loops=savedLoops;
+      recordCount=await new Promise((resolve,reject)=>{
+        const req=database.transaction('fixes','readonly').objectStore('fixes').count();
+        req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+      });
+      $('count').textContent=String(recordCount);
+      storageReady=true;
+      redraw();scheduleProgress();
+      if(native)syncNative();
+    }catch{
+      $('status').textContent=t('noStorage');
+    }
+  }
+  function flushStorage(){
+    clearTimeout(writeTimer);writeTimer=null;
+    if(!database||!storageReady)return Promise.reject(Error('Storage unavailable'));
+    const coverage=[...pendingCoverage],raw=pendingRaw.splice(0),rings=pendingLoops.splice(0);
+    pendingCoverage.clear();
+    if(!coverage.length&&!raw.length&&!rings.length)return writeChain;
+    writeChain=writeChain.catch(()=>{}).then(async()=>{
+      const tx=database.transaction(['fixes','coverage','loops'],'readwrite');
+      const fixes=tx.objectStore('fixes'),cells=tx.objectStore('coverage');
+      for(const fix of raw)fixes.put(fix);
+      for(const [key,[lat,lon]] of coverage)cells.put({key,lat,lon});
+      for(const ring of rings)tx.objectStore('loops').add(ring);
+      await transactionDone(tx);
+      recordCount=await new Promise((resolve,reject)=>{
+        const req=database.transaction('fixes','readonly').objectStore('fixes').count();
+        req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+      });
+      $('count').textContent=String(recordCount);
+    }).catch(error=>{
+      // Retain failed writes in memory and leave the native queue unacknowledged.
+      for(const [key,point] of coverage)pendingCoverage.set(key,point);
+      pendingRaw.unshift(...raw);pendingLoops.unshift(...rings);
+      $('status').textContent=t('noStorage');
+      throw error;
+    });
+    return writeChain;
+  }
+  function scheduleStorage(){
+    if(!writeTimer)writeTimer=setTimeout(()=>{flushStorage().catch(()=>{});},1000);
+  }
+  initializeStorage();
   let countries=[],currentCountry=null,progressTimer=null,lastProgressAt=0,progressCountry=null,bordersReady=false;
   let maximumProgress={};
   try{
@@ -296,7 +395,7 @@
     },Math.max(300,10000-(Date.now()-lastProgressAt)));
   }
   loadCountries();
-  $('count').textContent=String(points.length);
+  $('count').textContent='…';
   const canvas=document.createElement('canvas');
   canvas.className='fog-canvas';canvas.setAttribute('aria-hidden','true');
   map.getContainer().appendChild(canvas);
@@ -459,15 +558,16 @@
   function redraw(){if(!queued){queued=true;requestAnimationFrame(draw);}}
   map.on('move zoom zoomanim zoomend resize viewreset',redraw);redraw();
   function save(lat,lon){
-    points.push([lat,lon]);
-    if(points.length>MAX_POINTS)points=points.slice(-MAX_POINTS);
+    const key=coverageKey(lat,lon);
+    if(!coverageKeys.has(key)){
+      coverageKeys.add(key);
+      points.push([lat,lon]);pendingCoverage.set(key,[lat,lon]);
+      scheduleStorage();
+    }
     trail.push([lat,lon]);
     if(trail.length>1500)trail.shift();
     detectEnclosure();
     if(importing)return;
-    try{localStorage.setItem(KEY,JSON.stringify(points));}
-    catch{$('status').textContent=t('noStorage');}
-    $('count').textContent=String(points.length);
     redraw();
     if(worldActive)renderWorld();
     scheduleProgress();
@@ -492,10 +592,7 @@
       let perimeter=map.distance(current,trail[i]);
       for(let j=1;j<ring.length;j++)perimeter+=map.distance(ring[j-1],ring[j]);
       if(perimeter<450||ringArea(ring)<15000)continue;
-      loops.push(ring);
-      if(loops.length>MAX_LOOPS)loops.shift();
-      try{localStorage.setItem(LOOPS_KEY,JSON.stringify(loops));}
-      catch{$('status').textContent=t('noEnclosedStorage');}
+      loops.push(ring);pendingLoops.push(ring);scheduleStorage();
       trail=[current];
       return;
     }
@@ -503,6 +600,7 @@
   $('radius').textContent='5 km';
   $('terrain').textContent=t('allDirections');
   function onPosition(position,fromNative=false,render=true){
+    if(!storageReady)return;
     const {latitude:lat,longitude:lon,accuracy}=position.coords;
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
     $('accuracy').textContent=Number.isFinite(accuracy)?Math.round(accuracy)+' m':'–';
@@ -527,6 +625,9 @@
     if(render&&worldActive&&!fromNative)renderWorld();
     if(render)setCountry({lat,lng:lon});
     if(distance>=10){
+      const fix={lat,lon,time:now,accuracy};
+      if(Number.isSafeInteger(position.fixId))fix.id=position.fixId;
+      pendingRaw.push(fix);scheduleStorage();
       // Short plausible gaps form a corridor; long gaps only reveal endpoints.
       if(lastFix&&distance<=2000&&seconds>0&&seconds<=120){
         const steps=Math.ceil(distance/75);
@@ -547,7 +648,7 @@
   let nativeStartAt=0;
   let syncing=false;
   async function syncNative(){
-    if(!native||syncing||!bordersReady)return;
+    if(!native||syncing||!bordersReady||!storageReady)return;
     syncing=true;
     try{
       const tracking=native.isTracking();
@@ -568,16 +669,14 @@
         for(let i=0;i<fixes.length;i++){
           const fix=fixes[i];
           if(!Number.isFinite(fix.lat)||!Number.isFinite(fix.lon)||!Number.isFinite(fix.time))continue;
-          onPosition({coords:{latitude:fix.lat,longitude:fix.lon,accuracy:fix.accuracy},timestamp:fix.time},
+          onPosition({coords:{latitude:fix.lat,longitude:fix.lon,accuracy:fix.accuracy},
+            timestamp:fix.time,fixId:fix.id},
             true,i===fixes.length-1);
           acknowledged=fix.id;
         }
       }finally{importing=false;}
-      await discovery.flush();
+      await Promise.all([discovery.flush(),flushStorage()]);
       if(acknowledged){
-        try{localStorage.setItem(KEY,JSON.stringify(points));}
-        catch{$('status').textContent=t('noStorage');return;}
-        $('count').textContent=String(points.length);
         redraw();scheduleProgress();
         if(latestPosition){
           if(marker)marker.setLatLng(latestPosition);
