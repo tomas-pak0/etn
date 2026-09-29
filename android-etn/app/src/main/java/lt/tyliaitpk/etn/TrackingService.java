@@ -10,6 +10,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -21,12 +24,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 public class TrackingService extends Service implements LocationListener {
@@ -35,6 +33,7 @@ public class TrackingService extends Service implements LocationListener {
     private static final String FILENAME = "pending-locations.jsonl";
     private static final String PREFS = "etn-native";
     private static final Object FILE_LOCK = new Object();
+    private static FixDatabase fixDatabase;
     private LocationManager locations;
     private long lastGpsAt;
     private float lastGpsAccuracy = Float.MAX_VALUE;
@@ -47,22 +46,47 @@ public class TrackingService extends Service implements LocationListener {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("running", value).apply();
     }
     private static File queue(Context context) { return new File(context.getFilesDir(), FILENAME); }
-    private static List<String> readLines(Context context) {
-        List<String> lines = new ArrayList<>();
-        File file = queue(context);
-        if (!file.exists()) return lines;
-        try (BufferedReader input = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = input.readLine()) != null) if (!line.isEmpty()) lines.add(line);
-        } catch (Exception ignored) {}
-        return lines;
+    private static class FixDatabase extends SQLiteOpenHelper {
+        FixDatabase(Context context) { super(context.getApplicationContext(), "etn-fixes.db", null, 1); }
+        @Override public void onCreate(SQLiteDatabase db) {
+            db.execSQL("CREATE TABLE fixes (id INTEGER PRIMARY KEY, data TEXT NOT NULL)");
+        }
+        @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {}
+    }
+    private static SQLiteDatabase database(Context context) {
+        if (fixDatabase == null) fixDatabase = new FixDatabase(context);
+        SQLiteDatabase db = fixDatabase.getWritableDatabase();
+        // The previous version used a capped JSONL queue. Import its remaining
+        // fixes before deleting it, so pending background trips survive updates.
+        File old = queue(context);
+        if (old.exists()) {
+            db.beginTransaction();
+            try (BufferedReader input = new BufferedReader(new FileReader(old))) {
+                String line;
+                while ((line = input.readLine()) != null) {
+                    try {
+                        JSONObject fix = new JSONObject(line);
+                        android.content.ContentValues values = new android.content.ContentValues();
+                        values.put("id", fix.getLong("id"));
+                        values.put("data", line);
+                        db.insertWithOnConflict("fixes", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+                    } catch (Exception ignored) {}
+                }
+                db.setTransactionSuccessful();
+            } catch (Exception ignored) {
+                return db;
+            } finally { db.endTransaction(); }
+            old.delete();
+        }
+        return db;
     }
     static String pendingFixes(Context context) {
         synchronized (FILE_LOCK) {
             JSONArray result = new JSONArray();
-            for (String line : readLines(context)) {
-                if (result.length() >= 1000) break;
-                try { result.put(new JSONObject(line)); } catch (Exception ignored) {}
+            try (Cursor cursor = database(context).rawQuery(
+                "SELECT data FROM fixes ORDER BY id LIMIT 1000", null)) {
+                while (cursor.moveToNext()) result.put(new JSONObject(cursor.getString(0)));
+            } catch (Exception ignored) {
             }
             return result.toString();
         }
@@ -70,12 +94,7 @@ public class TrackingService extends Service implements LocationListener {
     static void ackFixes(Context context, long lastId) {
         synchronized (FILE_LOCK) {
             try {
-                StringBuilder remaining = new StringBuilder();
-                for (String line : readLines(context)) {
-                    JSONObject item = new JSONObject(line);
-                    if (item.getLong("id") > lastId) remaining.append(line).append('\n');
-                }
-                Files.write(queue(context).toPath(), remaining.toString().getBytes(StandardCharsets.UTF_8));
+                database(context).execSQL("DELETE FROM fixes WHERE id <= ?", new Object[]{lastId});
             } catch (Exception ignored) {}
         }
     }
@@ -153,17 +172,9 @@ public class TrackingService extends Service implements LocationListener {
                 fix.put("id", id); fix.put("lat", location.getLatitude());
                 fix.put("lon", location.getLongitude()); fix.put("accuracy", location.getAccuracy());
                 fix.put("time", location.getTime());
-                try (FileOutputStream output = new FileOutputStream(queue(this), true)) {
-                    output.write((fix.toString() + "\n").getBytes(StandardCharsets.UTF_8));
-                }
-                File file = queue(this);
-                if (file.length() > 2_000_000) {
-                    List<String> all = readLines(this);
-                    StringBuilder recent = new StringBuilder();
-                    for (int i = Math.max(0, all.size() - 5000); i < all.size(); i++)
-                        recent.append(all.get(i)).append('\n');
-                    Files.write(file.toPath(), recent.toString().getBytes(StandardCharsets.UTF_8));
-                }
+                android.content.ContentValues values = new android.content.ContentValues();
+                values.put("id", id); values.put("data", fix.toString());
+                database(this).insertOrThrow("fixes", null, values);
             } catch (Exception ignored) {}
         }
     }
