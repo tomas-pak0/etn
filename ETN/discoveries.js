@@ -9,7 +9,7 @@
   const tileCache=new Map();
   let index=null,indexPromise=null,adminPromise=null,dbPromise=null,chain=Promise.resolve(),activeEvent=null,discoveryError=false;
   let centerIndex=null,centerPromise=null,lastCountCode=null;
-  const centerByPlace=new Map(),migratedCountries=new Set();
+  const centerByPlace=new Map(),migratedCountries=new Set(),seenCenterUnits=new Set();
   const fallback={countries:new Set(),places:new Set(),centers:new Set(),events:[]};
   function openDB(){
     if(dbPromise)return dbPromise;
@@ -58,11 +58,19 @@
     }));
   }
   function markCenter(key){
+    if(seenCenterUnits.has(key))return Promise.resolve(false);
     return openDB().then(db=>new Promise((resolve,reject)=>{
-      if(!db){fallback.centers.add(key);resolve();return;}
+      if(!db){
+        const added=!fallback.centers.has(key);
+        fallback.centers.add(key);seenCenterUnits.add(key);resolve(added);return;
+      }
       const tx=db.transaction('visited','readwrite');
-      tx.objectStore('visited').put(true,key);
-      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+      let inserted=false;
+      tx.objectStore('visited').get(key).onsuccess=e=>{
+        if(!e.target.result){tx.objectStore('visited').put(true,key);inserted=true;}
+      };
+      tx.oncomplete=()=>{seenCenterUnits.add(key);resolve(inserted)};
+      tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
     }));
   }
   function firstEvent(){
@@ -258,8 +266,9 @@
         const y=(lat-row[3])*111320;
         if(Math.hypot(x,y)<=1000)foundCenters.add(row[0]);
       }
-      for(const unit of foundCenters)await markCenter(`m:${unit}`);
-      if(foundCenters.size)updateCount(code);
+      let changed=false;
+      for(const unit of foundCenters)changed=await markCenter(`m:${unit}`)||changed;
+      if(changed)updateCount(code);
     }
   }
   function enqueue(lat,lon,feature){
