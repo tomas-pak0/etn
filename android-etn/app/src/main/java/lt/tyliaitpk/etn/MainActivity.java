@@ -70,11 +70,14 @@ public class MainActivity extends Activity {
                     .setAction(TrackingService.ACTION_STOP)));
             }
             @JavascriptInterface public void exportCsv(String name, String csv) {
+                exportFile(name, csv, "text/csv");
+            }
+            @JavascriptInterface public void exportFile(String name, String content, String mime) {
                 runOnUiThread(() -> {
-                    pendingExport = csv;
+                    pendingExport = content;
                     Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     save.addCategory(Intent.CATEGORY_OPENABLE);
-                    save.setType("text/csv");
+                    save.setType("text/plain".equals(mime) ? "text/plain" : "text/csv");
                     save.putExtra(Intent.EXTRA_TITLE, name);
                     startActivityForResult(save, EXPORT_REQUEST);
                 });
