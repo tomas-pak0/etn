@@ -330,7 +330,7 @@
       for(const [position,item] of selected.entries()){
         const date=item.discoveredAt?new Date(item.discoveredAt):null;
         rows.push(`${position+1}. ${t('exportName')}: ${item.name||'–'}`,
-          `   ${t('exportDistrict')}: ${item.admin2||'–'}`,
+          `   ${t('exportDistrict')}: ${item.admin2||item.admin1||'–'}`,
           `   ${t('exportDate')}: ${date?.toLocaleString(locale,{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})||'–'}`,
           '');
       }
