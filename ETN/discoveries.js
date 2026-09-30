@@ -324,6 +324,25 @@
     }
     const selected=records.filter(item=>item.type===type)
       .sort((a,b)=>(a.discoveredAt||0)-(b.discoveredAt||0));
+    if(format==='pdf'){
+      const report={
+        title:t(type==='center'?'exportCentersTitle':'exportSettlementsTitle'),
+        generated:t('pdfGenerated')+': '+new Date().toLocaleString(locale),
+        countLabel:t('pdfCount'),
+        districtLabel:t('exportDistrict'),
+        empty:t('pdfEmpty'),
+        year:String(new Date().getFullYear()),
+        entries:selected.map(item=>({
+          name:item.name||'–',
+          district:item.admin2||item.admin1||'–',
+          date:item.discoveredAt?new Date(item.discoveredAt).toLocaleString(locale):'–'
+        }))
+      };
+      const filename=`ETN-${type==='center'?'centrai':'gyvenvietes'}-${new Date().toISOString().slice(0,10)}.pdf`;
+      if(window.ETNNative?.exportPdf)window.ETNNative.exportPdf(filename,JSON.stringify(report));
+      else printReport(report);
+      return;
+    }
     let content;
     if(format==='txt'){
       const rows=[t(type==='center'?'exportCentersTitle':'exportSettlementsTitle'),''];
@@ -355,17 +374,55 @@
       setTimeout(()=>URL.revokeObjectURL(url),60000);
     }
   }
+  function printReport(report){
+    const escape=value=>String(value).replace(/[&<>"']/g,char=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[char]);
+    const rows=report.entries.length?report.entries.map((item,index)=>
+      `<div class="row"><strong>${index+1}. ${escape(item.name)}</strong><small>${escape(report.districtLabel)}: ${escape(item.district)}<span>${escape(item.date)}</span></small></div>`
+    ).join(''):`<p>${escape(report.empty)}</p>`;
+    const frame=document.createElement('iframe');
+    frame.style.cssText='position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none';
+    document.body.append(frame);
+    frame.contentDocument.open();
+    frame.contentDocument.write(`<!doctype html><html><head><base href="${escape(location.href)}"><meta charset="utf-8"><title>${escape(report.title)}</title><style>
+      @page{size:A4;margin:15mm}*{box-sizing:border-box}body{margin:0;color:#111318;background:#fff;font:12px system-ui,sans-serif}
+      header{display:flex;align-items:center;gap:14px;background:#111318;color:#fff;padding:20px;border-bottom:5px solid #ed3948}
+      header img{width:52px;height:52px}header h1{margin:0;font-size:24px}header .brand{margin-left:auto;text-align:right}
+      h2{font-size:21px;margin:23px 0 7px}.meta{color:#647075;margin:0 0 16px}.count{color:#ed3948;font-weight:700;margin:0 0 15px}
+      .row{break-inside:avoid;padding:10px 13px;border-left:4px solid #ed3948;margin:0 0 7px;background:#f4f6f5;border-radius:5px}
+      .row strong{display:block;font-size:13px}.row small{display:flex;justify-content:space-between;gap:10px;color:#657076;margin-top:5px}
+      footer{margin-top:24px;border-top:1px solid #dce0de;padding-top:10px;color:#657076}
+    </style></head><body><header><img src="branding/etn.svg" alt="ETN"><h1>ETN</h1><div class="brand">TyliaiTPk<br><img src="branding/tyliaitpk.svg" alt="TyliaiTPk"></div></header>
+      <h2>${escape(report.title)}</h2><p class="meta">${escape(report.generated)}</p>
+      <p class="count">${escape(report.countLabel)}: ${report.entries.length}</p>${rows}
+      <footer>ETN • © TyliaiTPk ${escape(report.year)}</footer></body></html>`);
+    frame.contentDocument.close();
+    Promise.all([...frame.contentDocument.images].map(img=>img.decode().catch(()=>{})))
+      .then(()=>{
+        frame.contentWindow.focus();frame.contentWindow.print();
+        setTimeout(()=>frame.remove(),60000);
+      });
+  }
   let exportType=null;
   function closeExport(){$('exportDialog').hidden=true;exportType=null;}
   function chooseExport(type){
     exportType=type;
     $('exportTitle').textContent=t(type==='center'?'exportCentersTitle':'exportSettlementsTitle');
     $('exportDialog').hidden=false;
+    requestAnimationFrame(updateFormats);
   }
+  function updateFormats(){
+    const narrow=$('exportOptions').clientWidth<270;
+    $('exportCsv').hidden=narrow;
+    $('exportOptions').classList.toggle('two-formats',narrow);
+  }
+  window.addEventListener('resize',updateFormats);
   $('settlementCard').onclick=()=>chooseExport('settlement');
   $('centerCard').onclick=()=>chooseExport('center');
   $('exportCsv').onclick=()=>{const type=exportType;closeExport();if(type)exportList(type,'csv');};
   $('exportTxt').onclick=()=>{const type=exportType;closeExport();if(type)exportList(type,'txt');};
+  $('exportPdf').onclick=()=>{const type=exportType;closeExport();if(type)exportList(type,'pdf');};
   $('exportCancel').onclick=closeExport;
   $('exportDialog').onclick=event=>{if(event.target===$('exportDialog'))closeExport();};
   loadIndex().then(value=>{if(value)value.tilesSet=new Set(value.tiles);showNext()});
