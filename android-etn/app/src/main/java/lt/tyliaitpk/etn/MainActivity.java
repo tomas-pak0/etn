@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
     private static final int NOTIFICATION_REQUEST = 13;
     private static final int EXPORT_REQUEST = 14;
     private String pendingExport;
+    private String pendingPdf;
     static volatile boolean visible;
     private WebView webView;
     private GeolocationPermissions.Callback pendingGeolocation;
@@ -75,9 +76,21 @@ public class MainActivity extends Activity {
             @JavascriptInterface public void exportFile(String name, String content, String mime) {
                 runOnUiThread(() -> {
                     pendingExport = content;
+                    pendingPdf = null;
                     Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     save.addCategory(Intent.CATEGORY_OPENABLE);
                     save.setType("text/plain".equals(mime) ? "text/plain" : "text/csv");
+                    save.putExtra(Intent.EXTRA_TITLE, name);
+                    startActivityForResult(save, EXPORT_REQUEST);
+                });
+            }
+            @JavascriptInterface public void exportPdf(String name, String reportJson) {
+                runOnUiThread(() -> {
+                    pendingPdf = reportJson;
+                    pendingExport = null;
+                    Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    save.addCategory(Intent.CATEGORY_OPENABLE);
+                    save.setType("application/pdf");
                     save.putExtra(Intent.EXTRA_TITLE, name);
                     startActivityForResult(save, EXPORT_REQUEST);
                 });
@@ -187,12 +200,21 @@ public class MainActivity extends Activity {
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != EXPORT_REQUEST) return;
-        if (resultCode == RESULT_OK && data != null && data.getData() != null && pendingExport != null) {
-            try (java.io.OutputStream output = getContentResolver().openOutputStream(data.getData())) {
-                if (output != null) output.write(pendingExport.getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ignored) {}
-        }
+        final String text = pendingExport, pdf = pendingPdf;
         pendingExport = null;
+        pendingPdf = null;
+        if (resultCode == RESULT_OK && data != null && data.getData() != null &&
+                (text != null || pdf != null)) {
+            final Uri destination = data.getData();
+            new Thread(() -> {
+                try (java.io.OutputStream output = getContentResolver().openOutputStream(destination)) {
+                    if (output != null) {
+                        if (pdf != null) PdfExporter.write(getApplicationContext(), pdf, output);
+                        else output.write(text.getBytes(StandardCharsets.UTF_8));
+                    }
+                } catch (Exception ignored) {}
+            }, "etn-export").start();
+        }
     }
 
     @Override public void onBackPressed() {
