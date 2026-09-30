@@ -48,3 +48,8 @@ button.stat-country:hover,button.stat-country:focus-visible{border-color:#a7b1ac
 .discovery-kicker{color:#e7a28d;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.discovery-card h2{font-size:clamp(25px,6vw,36px);line-height:1.15;margin:14px 0 20px;overflow-wrap:anywhere}
 .discovery-card dl{margin:0 0 24px}.discovery-card dl div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #405149}.discovery-card dt{color:#9eafa5}.discovery-card dd{text-align:right;margin:0;font-weight:700;overflow-wrap:anywhere}
 .discovery-card button{width:100%;border:0;border-radius:11px;padding:15px;background:#dd7d67;color:#131713;font-weight:800}
+.export-backdrop[hidden]{display:none}.export-backdrop{position:fixed;inset:0;z-index:3100;display:grid;place-items:center;padding:18px;background:#020607c9;backdrop-filter:blur(8px)}
+.export-card{width:min(100%,420px);background:#17231f;border:1px solid #9b695d;border-radius:20px;padding:26px;box-shadow:0 28px 80px #000b}
+.export-card h2{margin:0 0 10px;font-size:24px}.export-card p{color:#a8b7ad;margin:0 0 20px}
+.export-options{display:grid;grid-template-columns:1fr 1fr;gap:12px}.export-options button{padding:15px;border:0;border-radius:11px;background:#dd7d67;color:#131713;font-weight:800;font-size:16px}
+.export-cancel{width:100%;margin-top:12px;padding:12px;border:1px solid #52645a;border-radius:11px;background:transparent;color:#e2e8e1}
