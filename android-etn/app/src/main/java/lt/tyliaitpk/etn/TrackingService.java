@@ -107,6 +107,7 @@ public class TrackingService extends Service implements LocationListener {
             case "de": return key.equals("title") ? "ETN erkundet die Umgebung" : key.equals("stop") ? "Stoppen" : "Standort wird im Hintergrund erfasst";
             case "es": return key.equals("title") ? "ETN explora el entorno" : key.equals("stop") ? "Detener" : "La ubicación se guarda en segundo plano";
             case "fr": return key.equals("title") ? "ETN explore les environs" : key.equals("stop") ? "Arrêter" : "Position enregistrée en arrière-plan";
+            case "it": return key.equals("title") ? "ETN esplora i dintorni" : key.equals("stop") ? "Ferma" : "Posizione registrata in background";
             default: return key.equals("title") ? "ETN is exploring" : key.equals("stop") ? "Stop" : "Location is recorded in the background";
         }
     }
