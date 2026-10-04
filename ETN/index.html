@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090d11"><title>ETN · Explore the Neighborhood</title>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css"><link rel="stylesheet" href="style.css?v=068">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css"><link rel="stylesheet" href="style.css?v=0612">
 </head>
 <body>
 <header>
   <div class="brand"><span class="logo">E<span>·</span></span><div><strong>ETN</strong><small>Explore the Neighborhood</small></div></div>
   <div class="header-tools"><span class="badge" data-i18n="badge">ATRASK SAVO APLINKĄ</span>
     <label class="language-picker"><span class="sr-only" data-i18n="languageLabel">Kalba</span>
-      <select id="language" aria-label="Language / Kalba"><option value="lt">🇱🇹 LT</option><option value="uk">🇺🇦 UK</option><option value="lv">🇱🇻 LV</option><option value="pl">🇵🇱 PL</option><option value="en">🇬🇧 EN</option><option value="de">🇩🇪 DE</option><option value="es">🇪🇸 ES</option><option value="fr">🇫🇷 FR</option></select>
+      <select id="language" aria-label="Language / Kalba"><option value="lt">🇱🇹 LT</option><option value="uk">🇺🇦 UK</option><option value="lv">🇱🇻 LV</option><option value="pl">🇵🇱 PL</option><option value="en">🇬🇧 EN</option><option value="de">🇩🇪 DE</option><option value="es">🇪🇸 ES</option><option value="fr">🇫🇷 FR</option><option value="it">🇮🇹 IT</option></select>
     </label>
   </div>
 </header>
@@ -29,7 +29,7 @@
 </section>
 <section class="dashboard summary-stats">
   <button class="stat stat-country" id="countryCard" type="button" aria-label="Zoom to country"><b id="countryFlag" aria-hidden="true">🌐</b><span><small data-i18n="countryHeading">DABARTINĖ ŠALIS · PASPAUSK</small><strong id="country" data-i18n="waitingLocation">Laukiama vietos</strong></span></button>
-  <div class="stat"><b>◉</b><div><small data-i18n="exploredHeading">IŠTYRINĖTA ŠALIES</small><strong id="countryProgress">–</strong></div></div>
+  <button class="stat stat-explored" id="exploredCard" type="button" aria-label="Show explored area in this country"><b>◉</b><span><small data-i18n="exploredHeading">IŠTYRINĖTA ŠALIES</small><strong id="countryProgress">–</strong></span></button>
 </section>
 <section class="dashboard settlement-stats">
   <button class="stat" id="settlementCard" type="button" aria-label="Export discovered settlements"><b>⌖</b><span><small data-i18n="settlementHeading">ATRASTOS GYVENVIETĖS ŠALYJE</small><strong id="settlementProgress">–</strong></span></button>
