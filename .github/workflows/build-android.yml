@@ -45,3 +45,31 @@ jobs:
         with:
           name: ETN-android-debug
           path: ${{ runner.temp }}/etn/android-etn/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Split APK for large-artifact transfer
+        run: split -b 20m "${{ runner.temp }}/etn/android-etn/app/build/outputs/apk/debug/app-debug.apk" "${{ runner.temp }}/etn-part-"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-part-aa
+          path: ${{ runner.temp }}/etn-part-aa
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-part-ab
+          path: ${{ runner.temp }}/etn-part-ab
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-part-ac
+          path: ${{ runner.temp }}/etn-part-ac
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-part-ad
+          path: ${{ runner.temp }}/etn-part-ad
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-part-ae
+          path: ${{ runner.temp }}/etn-part-ae
+          compression-level: 0
