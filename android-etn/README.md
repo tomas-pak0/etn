@@ -1,6 +1,6 @@
 # ETN Android
 
-ETN 0.6.13 programėlė (`lt.tyliaitpk.etn.next`) turi fono vietos paslaugą ir lokaliai supakuotą žemėlapio sąsają. Pavadinimas telefone – ETN. Leidimas pasirašomas tuo pačiu sertifikatu kaip 0.4.2–0.5.0, todėl įsidiegia ant šių versijų nepašalinant jų įrenginyje saugomos istorijos. Pirminė `lt.tyliaitpk.etn` versija yra atskira programėlė su atskira istorija.
+ETN 0.6.14 programėlė (`lt.tyliaitpk.etn.next`) turi fono vietos paslaugą ir lokaliai supakuotą žemėlapio sąsają. Pavadinimas telefone – ETN. Leidimas pasirašomas tuo pačiu sertifikatu kaip 0.4.2–0.5.0, todėl įsidiegia ant šių versijų nepašalinant jų įrenginyje saugomos istorijos. Pirminė `lt.tyliaitpk.etn` versija yra atskira programėlė su atskira istorija.
 
 Vietos paslauga prašo GPS ir tinklo atnaujinimų su `minTimeMs=0` ir `minDistanceM=0`; realus dažnis priklauso nuo Android ir įrenginio. Sekimas įjungiamas tik ekrane ir tęsiamas kaip vietos tipo foreground paslauga, rodanti nuolatinį pranešimą. Android 13+ reikia pranešimų leidimo, kad matytųsi juostos piktograma. Svarbiausiam funkcionalumui prašoma tikslios vietos. Neleista vieta, priverstinis programėlės stabdymas arba ryšio su palydovais praradimas gali nutraukti fiksavimą.
 
@@ -19,3 +19,5 @@ Surinkimas: kopijuoti `ETN/index.html`, `style.css`, `i18n.js`, `discoveries.js`
 Atsisiųsti: [ETN 0.6.12 APK](https://github.com/tomas-pak0/etn/releases/download/v0.6.12/ETN-0.6.12.apk) · [pilnas leidimas ir šaltinis](https://github.com/tomas-pak0/etn/releases/tag/v0.6.12).
 
 0.6.13: kalbų pasirinkimas surikiuotas pagal lietuviškus pavadinimus. Google Play paketas surenkamas komanda `gradle :app:bundleRelease` iš pilnai supakuotų ETN duomenų. Į parduotuvę įkeliamas pasirašytas `.aab` su versionCode 31 ir targetSdk 36; viešame GitHub šaltinyje pasirašymo raktas nesaugomas. Google Play Console, pasirinkus jau naudojamą programėlės pasirašymo raktą, galima išlaikyti ankstesnių APK atnaujinamumą.
+
+0.6.14: kalbų pasirinkime vėl rodomi trumpi kodai ir vėliavos, sąrašas surikiuotas pagal kodą. Android versijos kodas 32, targetSdk 36. APK ir AAB pasirašomi esamu ETN atnaujinimo sertifikatu už viešos repozitorijos ribų.
