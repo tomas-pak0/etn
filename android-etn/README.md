@@ -15,3 +15,5 @@ Surinkimas: kopijuoti `ETN/index.html`, `style.css`, `i18n.js`, `discoveries.js`
 0.6.12: palietus gyvenviečių arba centrų kortelę galima rinktis CSV, TXT arba PDF. Siaurame lange CSV pasirinkimas paslepiamas, tačiau CSV eksporto kodas išlieka. PDF turi ETN ir TyliaiTPk logotipus, pavadinimą, rajoną ir atradimo datą. Ilgos pastabos suskleistos po antrašte „Apie duomenis ir privatumą“. Apačioje rodoma dinaminė © TyliaiTPk metų eilutė.
 
 0.6.12: pridėta italų kalba sąsajoje ir fono GPS pranešime. Palietus „Ištyrinėta šalies“ kortelę, žemėlapio mastelis apima visus esamos šalies atidengimo taškus ir jų 5 km spindulius. Jei toje šalyje atidengimo dar nėra, rodoma šalies apžvalga.
+
+Atsisiųsti: [ETN 0.6.12 APK](https://github.com/tomas-pak0/etn/releases/download/v0.6.12/ETN-0.6.12.apk) · [pilnas leidimas ir šaltinis](https://github.com/tomas-pak0/etn/releases/tag/v0.6.12).
