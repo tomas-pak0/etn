@@ -299,6 +299,50 @@
     }
     $('countryPicker').hidden=false;
   };
+  function exploredBounds(feature){
+    const [west,south,east,north]=feature.bounds;
+    const bounds=L.latLngBounds();
+    const metersPerDegree=111195;
+    for(const [lat,lon] of points){
+      const latRadius=MAX_RADIUS/metersPerDegree;
+      const lonRadius=latRadius/Math.max(.01,Math.cos(lat*Math.PI/180));
+      if(lat+latRadius<south||lat-latRadius>north||lon+lonRadius<west||lon-lonRadius>east)continue;
+      let touches=inCountry(lon,lat,feature);
+      if(!touches){
+        for(const radius of [MAX_RADIUS/2,MAX_RADIUS]){
+          for(let angle=0;angle<32;angle++){
+            const bearing=2*Math.PI*angle/32;
+            if(inCountry(lon+radius*Math.cos(bearing)/metersPerDegree/
+                Math.max(.01,Math.cos(lat*Math.PI/180)),
+                lat+radius*Math.sin(bearing)/metersPerDegree,feature)){
+              touches=true;break;
+            }
+          }
+          if(touches)break;
+        }
+      }
+      if(touches){
+        bounds.extend([lat-latRadius,lon-lonRadius]);
+        bounds.extend([lat+latRadius,lon+lonRadius]);
+      }
+    }
+    for(const ring of loops)for(const [lat,lon] of ring){
+      if(inCountry(lon,lat,feature))bounds.extend([lat,lon]);
+    }
+    return bounds;
+  }
+  $('exploredCard').onclick=()=>{
+    if(!countries.length){$('status').textContent=t('loadingBorders');return;}
+    if(!currentCountry){$('status').textContent=t('noCountry');return;}
+    if(worldActive)$('worldButton').onclick();
+    setFollowPosition(false);
+    map.invalidateSize();
+    const bounds=exploredBounds(currentCountry);
+    if(bounds.isValid()){
+      map.fitBounds(bounds,{padding:[36,36],animate:true});
+      $('status').textContent=t('viewingExplored',{country:countryName(currentCountry)});
+    }else zoomToCountry(currentCountry);
+  };
   // Only a deliberate map gesture pauses following. GPS-driven pans do not.
   let mapGesture=false;
   map.getContainer().addEventListener('pointerdown',event=>{
