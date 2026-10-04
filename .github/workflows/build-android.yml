@@ -19,14 +19,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK 35
+      - name: Install Android SDK 36
         run: |
           SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
           yes | "$SDKMGR" --licenses >/dev/null || true
-          "$SDKMGR" 'platforms;android-35' 'build-tools;35.0.0'
+          "$SDKMGR" 'platforms;android-36' 'build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.11.1'
+          gradle-version: '8.13'
       - name: Restore bundled world data and overlay current source
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,7 +40,7 @@ jobs:
           cp -a "$RUNNER_TEMP/etn/ETN/." "$RUNNER_TEMP/etn/android-etn/app/src/main/assets/"
       - name: Build
         working-directory: ${{ runner.temp }}/etn/android-etn
-        run: gradle :app:assembleDebug --no-daemon
+        run: gradle :app:assembleDebug :app:bundleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: ETN-android-debug
@@ -72,4 +72,43 @@ jobs:
         with:
           name: ETN-part-ae
           path: ${{ runner.temp }}/etn-part-ae
+          compression-level: 0
+
+      - name: Split release Android App Bundle for transfer
+        run: split -b 20m "${{ runner.temp }}/etn/android-etn/app/build/outputs/bundle/release/app-release.aab" "${{ runner.temp }}/etn-aab-part-"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-aab-part-aa
+          path: ${{ runner.temp }}/etn-aab-part-aa
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-aab-part-ab
+          path: ${{ runner.temp }}/etn-aab-part-ab
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-aab-part-ac
+          path: ${{ runner.temp }}/etn-aab-part-ac
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-aab-part-ad
+          path: ${{ runner.temp }}/etn-aab-part-ad
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-aab-part-ae
+          path: ${{ runner.temp }}/etn-aab-part-ae
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-aab-part-af
+          path: ${{ runner.temp }}/etn-aab-part-af
+          if-no-files-found: ignore
           compression-level: 0
