@@ -45,7 +45,7 @@ jobs:
           cp -a "$RUNNER_TEMP/etn/ETN/." "$RUNNER_TEMP/etn/android-etn/app/src/main/assets/"
       - name: Build
         working-directory: ${{ runner.temp }}/etn/android-etn
-        run: gradle :app:assembleDebug :app:bundleRelease --no-daemon
+        run: gradle :app:assembleDebug :app:assembleRelease :app:bundleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: ETN-android-debug
@@ -115,5 +115,44 @@ jobs:
         with:
           name: ETN-aab-part-af
           path: ${{ runner.temp }}/etn-aab-part-af
+          if-no-files-found: ignore
+          compression-level: 0
+
+      - name: Split unsigned release APK for signing
+        run: split -b 20m "${{ runner.temp }}/etn/android-etn/app/build/outputs/apk/release/app-release-unsigned.apk" "${{ runner.temp }}/etn-release-apk-part-"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-release-apk-part-aa
+          path: ${{ runner.temp }}/etn-release-apk-part-aa
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-release-apk-part-ab
+          path: ${{ runner.temp }}/etn-release-apk-part-ab
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-release-apk-part-ac
+          path: ${{ runner.temp }}/etn-release-apk-part-ac
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-release-apk-part-ad
+          path: ${{ runner.temp }}/etn-release-apk-part-ad
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-release-apk-part-ae
+          path: ${{ runner.temp }}/etn-release-apk-part-ae
+          if-no-files-found: ignore
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-release-apk-part-af
+          path: ${{ runner.temp }}/etn-release-apk-part-af
           if-no-files-found: ignore
           compression-level: 0
