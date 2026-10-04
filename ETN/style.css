@@ -14,6 +14,9 @@
 button.stat-country{text-align:left;color:inherit;font:inherit;cursor:pointer}
 button.stat-country:hover,button.stat-country:focus-visible{border-color:#a7b1ac;outline-offset:2px}
 .stat-country span{min-width:0}
+button.stat-explored{text-align:left;color:inherit;font:inherit;cursor:pointer}
+button.stat-explored:hover,button.stat-explored:focus-visible{border-color:#a7b1ac;outline-offset:2px}
+.stat-explored span{min-width:0}
 .country-picker{position:absolute;z-index:800;top:125px;right:20px;max-width:min(330px,calc(100% - 40px));max-height:calc(100% - 145px);overflow:auto;background:#111a1bdd;border:1px solid #71807e;border-radius:12px;padding:12px;box-shadow:0 20px 40px #000b;backdrop-filter:blur(12px)}
 .country-picker[hidden]{display:none}
 .country-picker-head{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:8px;font-size:14px}
