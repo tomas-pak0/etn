@@ -180,9 +180,12 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 36
+          api-level: 35
           arch: x86_64
           profile: pixel_6
+          ram-size: 4096M
+          cores: 2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan -camera-back none -camera-front none
           disable-animations: true
           script: |
             mkdir -p evidence
@@ -192,6 +195,7 @@ jobs:
             adb shell settings put global sysui_demo_allowed 1
             adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1000
             adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false
+            sleep 30
             adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
             sleep 12
             adb shell pidof lt.tyliaitpk.etn.next
