@@ -7,9 +7,10 @@ def dump():
     return ET.fromstring(xml)
 def tap(pattern):
     for node in dump().iter('node'):
-        text=node.get('text','')+' '+node.get('content-desc','')
-        if re.search(pattern,text,re.I):
+        texts=[node.get('text',''),node.get('content-desc','')]
+        if any(re.search(pattern,text,re.I) for text in texts):
             b=list(map(int,re.findall(r'\d+',node.get('bounds'))))
+            if len(b)!=4 or b[2]<=b[0] or b[3]<=b[1] or b[3]<=102 or b[1]>=1812:continue
             adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2))
             time.sleep(1)
             return True
@@ -31,7 +32,7 @@ def clear_system_dialogs():
 clear_system_dialogs()
 shot('01-home')
 for _ in range(2):
-    adb('shell','input','swipe','540','1650','540','400','500')
+    adb('shell','input','swipe','1070','1650','1070','400','500')
     time.sleep(2)
 shot('02-footer')
 record=subprocess.Popen(['adb','shell','screenrecord','--time-limit','60','/sdcard/ETN-location-demo.mp4'])
