@@ -5,18 +5,24 @@ def dump():
     xml=adb('shell','cat','/sdcard/ui.xml')
     open('evidence/last-ui.xml','wb').write(xml)
     return ET.fromstring(xml)
-def tap(pattern):
+def tap(pattern,before_shot=None):
     for node in dump().iter('node'):
         texts=[node.get('text',''),node.get('content-desc','')]
         if any(re.search(pattern,text,re.I) for text in texts):
             b=list(map(int,re.findall(r'\d+',node.get('bounds'))))
             if len(b)!=4 or b[2]<=b[0] or b[3]<=b[1] or b[3]<=102 or b[1]>=1812:continue
+            if before_shot:shot(before_shot)
             adb('shell','input','tap',str((b[0]+b[2])//2),str((b[1]+b[3])//2))
             time.sleep(1)
             return True
     return False
 def shot(name):
     open('evidence/'+name+'.png','wb').write(adb('exec-out','screencap','-p'))
+def wait_tap(pattern,before_shot=None):
+    for _ in range(8):
+        if tap(pattern,before_shot):return True
+        time.sleep(1)
+    return False
 def clear_system_dialogs():
     for _ in range(4):
         ui=dump();texts=' '.join(n.get('text','') for n in ui.iter('node'))
@@ -37,13 +43,9 @@ for _ in range(2):
 shot('02-footer')
 record=subprocess.Popen(['adb','shell','screenrecord','--time-limit','60','/sdcard/ETN-location-demo.mp4'])
 assert tap(r'Start exploring|Pradėti tyrinėjimą|Start exploration'),'Start button missing'
-shot('03-location-disclosure')
-assert tap(r'^OK\s*$'),'Disclosure confirmation missing'
-time.sleep(2)
-shot('04-location-permission')
-tap(r'While using the app|While using this app|Naudojant programėlę')
-time.sleep(2)
-tap(r'^Allow\s*$|^Leisti\s*$')
+assert wait_tap(r'^OK\s*$','03-location-disclosure'),'Disclosure confirmation missing'
+assert wait_tap(r'While using the app|While using this app|Naudojant programėlę','04-location-permission'),'Location permission prompt missing'
+assert wait_tap(r'^Allow\s*$|^Leisti\s*$'),'Notification permission prompt missing'
 time.sleep(2)
 adb('emu','geo','fix','25.2797','54.6872')
 time.sleep(4)
