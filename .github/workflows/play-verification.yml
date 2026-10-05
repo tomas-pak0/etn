@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/play-verification.yml'
+      - 'play-smoke.py'
 jobs:
   smoke:
     runs-on: ubuntu-latest
