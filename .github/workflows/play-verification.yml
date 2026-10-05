@@ -1,0 +1,54 @@
+name: Verify ETN Play materials
+on:
+  push:
+    paths:
+      - '.github/workflows/play-verification.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ETN-android-debug
+          path: apk
+          run-id: 37266995523
+          github-token: ${{ github.token }}
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 2048M
+          cores: 2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -feature -Vulkan -camera-back none -camera-front none
+          script: |
+            mkdir -p evidence
+            adb shell wm size 1080x1920
+            adb shell wm density 360
+            sleep 45
+            adb install apk/app-debug.apk
+            adb shell settings put global sysui_demo_allowed 1
+            adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1000
+            adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false
+            adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
+            sleep 12
+            adb shell pidof lt.tyliaitpk.etn.next
+            python3 play-smoke.py
+            adb logcat -d -s AndroidRuntime:E | sed '/^---------/d' > evidence/runtime-errors.txt
+            test ! -s evidence/runtime-errors.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETN-smoke-evidence
+          path: evidence/
