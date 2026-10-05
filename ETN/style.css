@@ -26,7 +26,7 @@ button.stat-explored:hover,button.stat-explored:focus-visible{border-color:#a7b1
 @media(max-width:650px){.country-picker{left:15px;right:15px;max-width:none}}
 .header-tools{display:flex;align-items:center;gap:8px}.language-picker select{background:#17211f;color:#f4f3ef;border:1px solid #4c5b55;border-radius:8px;padding:8px 4px;font-weight:700;font-size:12px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 @media(max-width:470px){.header-tools .badge{display:none}.language-picker select{max-width:74px}}
-.build-version{display:block;margin-top:12px;color:#82908b;font-size:11px;letter-spacing:.08em}
+.build-version{display:block;width:100%;margin-top:12px;color:#ed3948;text-align:center;font-size:11px;letter-spacing:.08em}
 
 /* Keep controls centered on wide screens and anchored to both edges on phones. */
 .actions{justify-content:center}

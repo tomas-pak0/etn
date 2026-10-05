@@ -156,3 +156,51 @@ jobs:
           path: ${{ runner.temp }}/etn-release-apk-part-af
           if-no-files-found: ignore
           compression-level: 0
+
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ETN-android-debug
+          path: apk
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            mkdir -p evidence
+            adb install apk/app-debug.apk
+            adb shell pm grant lt.tyliaitpk.etn.next android.permission.ACCESS_FINE_LOCATION
+            adb shell pm grant lt.tyliaitpk.etn.next android.permission.ACCESS_COARSE_LOCATION
+            adb shell pm grant lt.tyliaitpk.etn.next android.permission.POST_NOTIFICATIONS
+            adb shell wm size 1080x1920
+            adb shell wm density 360
+            adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
+            sleep 12
+            adb shell pidof lt.tyliaitpk.etn.next
+            adb exec-out screencap -p > evidence/01-home.png
+            adb shell input swipe 540 1700 540 450 450
+            sleep 3
+            adb exec-out screencap -p > evidence/02-footer.png
+            adb shell input tap 380 1220
+            sleep 3
+            adb emu geo fix 25.2797 54.6872
+            sleep 3
+            adb shell dumpsys activity services lt.tyliaitpk.etn.next > evidence/services.txt
+            adb logcat -d -s AndroidRuntime:E > evidence/runtime-errors.txt
+            test ! -s evidence/runtime-errors.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ETN-smoke-evidence
+          path: evidence/
