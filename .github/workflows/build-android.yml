@@ -163,6 +163,7 @@ jobs:
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -180,23 +181,16 @@ jobs:
           script: |
             mkdir -p evidence
             adb install apk/app-debug.apk
-            adb shell pm grant lt.tyliaitpk.etn.next android.permission.ACCESS_FINE_LOCATION
-            adb shell pm grant lt.tyliaitpk.etn.next android.permission.ACCESS_COARSE_LOCATION
-            adb shell pm grant lt.tyliaitpk.etn.next android.permission.POST_NOTIFICATIONS
             adb shell wm size 1080x1920
             adb shell wm density 360
+            adb shell settings put global sysui_demo_allowed 1
+            adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1000
+            adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false
             adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
             sleep 12
             adb shell pidof lt.tyliaitpk.etn.next
             adb exec-out screencap -p > evidence/01-home.png
-            adb shell input swipe 540 1700 540 450 450
-            sleep 3
-            adb exec-out screencap -p > evidence/02-footer.png
-            adb shell input tap 380 1220
-            sleep 3
-            adb emu geo fix 25.2797 54.6872
-            sleep 3
-            adb shell dumpsys activity services lt.tyliaitpk.etn.next > evidence/services.txt
+            python3 play-smoke.py
             adb logcat -d -s AndroidRuntime:E > evidence/runtime-errors.txt
             test ! -s evidence/runtime-errors.txt
       - uses: actions/upload-artifact@v4

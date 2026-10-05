@@ -153,6 +153,24 @@ public class MainActivity extends Activity {
     }
 
     private void requestTracking() {
+        webView.evaluateJavascript("document.querySelector('[data-i18n=fineprint]').textContent", value -> {
+            try {
+                String disclosure = new org.json.JSONArray("[" + value + "]").getString(0);
+                Runnable denied = () -> webView.evaluateJavascript(
+                    "window.ETNTrackingDenied&&window.ETNTrackingDenied()", null);
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle("ETN")
+                    .setMessage(disclosure)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> requestTrackingPermissions())
+                    .setNegativeButton(android.R.string.cancel, (dialog, which) -> denied.run())
+                    .setOnCancelListener(dialog -> denied.run())
+                    .show();
+            } catch (org.json.JSONException ex) {
+                webView.evaluateJavascript("window.ETNTrackingDenied&&window.ETNTrackingDenied()", null);
+            }
+        });
+    }
+    private void requestTrackingPermissions() {
         if (!hasLocation()) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION}, TRACK_REQUEST);
@@ -178,7 +196,7 @@ public class MainActivity extends Activity {
             pendingOrigin = null;
         }
         if (requestCode == TRACK_REQUEST) {
-            if (hasLocation()) requestTracking();
+            if (hasLocation()) requestTrackingPermissions();
             else webView.evaluateJavascript("window.ETNTrackingDenied&&window.ETNTrackingDenied()", null);
         }
         if (requestCode == NOTIFICATION_REQUEST) {
