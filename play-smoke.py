@@ -2,7 +2,9 @@ import subprocess,time,re,xml.etree.ElementTree as ET
 def adb(*args):return subprocess.check_output(['adb',*args])
 def dump():
     adb('shell','uiautomator','dump','/sdcard/ui.xml')
-    return ET.fromstring(adb('shell','cat','/sdcard/ui.xml'))
+    xml=adb('shell','cat','/sdcard/ui.xml')
+    open('evidence/last-ui.xml','wb').write(xml)
+    return ET.fromstring(xml)
 def tap(pattern):
     for node in dump().iter('node'):
         text=node.get('text','')+' '+node.get('content-desc','')
@@ -14,7 +16,7 @@ def shot(name):
     open('evidence/'+name+'.png','wb').write(adb('exec-out','screencap','-p'))
 for _ in range(2):adb('shell','input','swipe','540','1650','540','400','500');time.sleep(2)
 shot('02-footer')
-record=subprocess.Popen(['adb','shell','screenrecord','--time-limit','30','/sdcard/ETN-location-demo.mp4'])
+record=subprocess.Popen(['adb','shell','screenrecord','--time-limit','60','/sdcard/ETN-location-demo.mp4'])
 assert tap(r'Start exploring|Pradėti tyrinėjimą|Start exploration'),'Start button missing'
 shot('03-location-disclosure')
 assert tap(r'^OK\s*$'),'Disclosure confirmation missing'
@@ -37,6 +39,6 @@ adb('shell','am','start','-n','lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivi
 assert tap(r'^Stop\s*$|^Stabdyti\s*$'),'Stop button missing'
 services=adb('shell','dumpsys','activity','services','lt.tyliaitpk.etn.next').decode()
 assert 'isForeground=true' not in services,'Location service did not stop'
-record.wait(timeout=35)
+record.wait(timeout=65)
 adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
-open('evidence/smoke-validation.txt','w').write('Android 16: launch, disclosure, permissions, foreground location start, background notification, stop passed. Coordinates simulated in emulator.\n')
+open('evidence/smoke-validation.txt','w').write('Android 15: launch, disclosure, permissions, foreground location start, background notification, stop passed. Coordinates simulated in emulator.\n')
