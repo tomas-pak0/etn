@@ -51,6 +51,19 @@ jobs:
           name: ETN-android-debug
           path: ${{ runner.temp }}/etn/android-etn/app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Validate Play bundle and stage signing tools
+        run: |
+          curl -fLsS https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar -o "$RUNNER_TEMP/bundletool.jar"
+          java -jar "$RUNNER_TEMP/bundletool.jar" validate --bundle "$RUNNER_TEMP/etn/android-etn/app/build/outputs/bundle/release/app-release.aab" > "$RUNNER_TEMP/bundle-validation.txt"
+          mkdir -p "$RUNNER_TEMP/etn-signing-tools"
+          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" "$ANDROID_HOME/build-tools/36.0.0/aapt2" "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" "$RUNNER_TEMP/etn-signing-tools/"
+          if [ -d "$ANDROID_HOME/build-tools/36.0.0/lib64" ]; then cp -a "$ANDROID_HOME/build-tools/36.0.0/lib64" "$RUNNER_TEMP/etn-signing-tools/"; fi
+          cp "$RUNNER_TEMP/bundle-validation.txt" "$RUNNER_TEMP/etn-signing-tools/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-signing-tools
+          path: ${{ runner.temp }}/etn-signing-tools/
+
       - name: Split APK for large-artifact transfer
         run: split -b 20m "${{ runner.temp }}/etn/android-etn/app/build/outputs/apk/debug/app-debug.apk" "${{ runner.temp }}/etn-part-"
       - uses: actions/upload-artifact@v4

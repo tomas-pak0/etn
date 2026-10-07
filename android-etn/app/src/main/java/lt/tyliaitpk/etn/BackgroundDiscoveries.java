@@ -132,8 +132,9 @@ final class BackgroundDiscoveries {
         context.getSharedPreferences("etn-native-discoveries", 0).edit().putStringSet("seen", new HashSet<>(seen)).apply();
         if (MainActivity.visible || (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)) return;
-        String language = java.util.Locale.getDefault().getLanguage();
+        String language = TrackingService.language(context);
         String title = "lt".equals(language) ? type.equals("country") ? "Atrasta nauja šalis" : type.equals("center") ? "Atrastas savivaldybės centras" : "Atrasta gyvenvietė"
+            : "ru".equals(language) ? type.equals("country") ? "Открыта новая страна" : type.equals("center") ? "Открыт административный центр" : "Открыт населённый пункт"
             : type.equals("country") ? "New country discovered" : type.equals("center") ? "Administrative center discovered" : "Settlement discovered";
         PendingIntent open = PendingIntent.getActivity(context, 0, new Intent(context, MainActivity.class),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

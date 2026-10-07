@@ -62,6 +62,9 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         webView.addJavascriptInterface(new Object() {
             @JavascriptInterface public String deviceLanguage() { return Locale.getDefault().getLanguage(); }
+            @JavascriptInterface public void setLanguage(String language) {
+                runOnUiThread(() -> TrackingService.setLanguage(MainActivity.this, language));
+            }
             @JavascriptInterface public boolean isTracking() { return TrackingService.isRunning(MainActivity.this); }
             @JavascriptInterface public String pendingFixes() { return TrackingService.pendingFixes(MainActivity.this); }
             @JavascriptInterface public void ackFixes(long lastId) { TrackingService.ackFixes(MainActivity.this, lastId); }

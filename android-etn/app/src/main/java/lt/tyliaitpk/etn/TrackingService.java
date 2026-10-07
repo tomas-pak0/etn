@@ -29,6 +29,7 @@ import java.util.Locale;
 
 public class TrackingService extends Service implements LocationListener {
     public static final String ACTION_STOP = "lt.tyliaitpk.etn.STOP_TRACKING";
+    private static final String ACTION_LANGUAGE = "lt.tyliaitpk.etn.UPDATE_LANGUAGE";
     private static final String CHANNEL = "etn-location";
     private static final String FILENAME = "pending-locations.jsonl";
     private static final String PREFS = "etn-native";
@@ -98,8 +99,18 @@ public class TrackingService extends Service implements LocationListener {
             } catch (Exception ignored) {}
         }
     }
-    private static String label(String key) {
-        String language = Locale.getDefault().getLanguage();
+    static String language(Context context) {
+        return context.getSharedPreferences(PREFS, MODE_PRIVATE)
+            .getString("language", Locale.getDefault().getLanguage());
+    }
+    static void setLanguage(Context context, String language) {
+        if (language == null || !language.matches("de|en|es|fr|it|lt|lv|pl|ru|uk")
+            || language.equals(language(context))) return;
+        context.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString("language", language).apply();
+        if (isRunning(context)) context.startService(new Intent(context, TrackingService.class).setAction(ACTION_LANGUAGE));
+    }
+    private String label(String key) {
+        String language = language(this);
         switch (language) {
             case "lt": return key.equals("title") ? "ETN tyrinėja aplinką" : key.equals("stop") ? "Stabdyti" : "Vieta fiksuojama fone";
             case "lv": return key.equals("title") ? "ETN pēta apkārtni" : key.equals("stop") ? "Apturēt" : "Atrašanās vieta tiek saglabāta fonā";
@@ -108,6 +119,7 @@ public class TrackingService extends Service implements LocationListener {
             case "es": return key.equals("title") ? "ETN explora el entorno" : key.equals("stop") ? "Detener" : "La ubicación se guarda en segundo plano";
             case "fr": return key.equals("title") ? "ETN explore les environs" : key.equals("stop") ? "Arrêter" : "Position enregistrée en arrière-plan";
             case "it": return key.equals("title") ? "ETN esplora i dintorni" : key.equals("stop") ? "Ferma" : "Posizione registrata in background";
+            case "ru": return key.equals("title") ? "ETN исследует окрестности" : key.equals("stop") ? "Остановить" : "Местоположение записывается в фоновом режиме";
             default: return key.equals("title") ? "ETN is exploring" : key.equals("stop") ? "Stop" : "Location is recorded in the background";
         }
     }
@@ -127,6 +139,10 @@ public class TrackingService extends Service implements LocationListener {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
             stopTracking(); return START_NOT_STICKY;
+        }
+        if (intent != null && ACTION_LANGUAGE.equals(intent.getAction())) {
+            if (isRunning(this)) ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(1001, notification());
+            return START_STICKY;
         }
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
             && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {

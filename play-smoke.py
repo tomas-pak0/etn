@@ -37,12 +37,18 @@ def clear_system_dialogs():
     raise AssertionError('Android system remains unresponsive')
 clear_system_dialogs()
 shot('01-home')
+assert tap(r'\bEN\b'), 'Language selector missing'
+assert wait_tap(r'\bRU\b'), 'Russian language missing'
+time.sleep(3)
+ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
+assert 'Начать исследование' in texts, 'Russian interface did not load'
+shot('07-russian-home')
 for _ in range(2):
     adb('shell','input','swipe','1070','1650','1070','400','500')
     time.sleep(2)
 shot('02-footer')
 record=subprocess.Popen(['adb','shell','screenrecord','--time-limit','60','/sdcard/ETN-location-demo.mp4'])
-assert tap(r'Start exploring|Pradėti tyrinėjimą|Start exploration'),'Start button missing'
+assert tap(r'Start exploring|Pradėti tyrinėjimą|Start exploration|Начать исследование'),'Start button missing'
 assert wait_tap(r'^OK\s*$','03-location-disclosure'),'Disclosure confirmation missing'
 assert wait_tap(r'While using the app|While using this app|Naudojant programėlę','04-location-permission'),'Location permission prompt missing'
 assert wait_tap(r'^Allow\s*$|^Leisti\s*$'),'Notification permission prompt missing'
@@ -58,13 +64,17 @@ time.sleep(2)
 adb('shell','cmd','statusbar','expand-notifications')
 time.sleep(2)
 shot('06-location-notification')
+notes=adb('shell','dumpsys','notification','--noredact').decode()
+assert 'ETN исследует окрестности' in notes, 'Russian foreground notification missing'
+open('evidence/russian-language-validation.txt','w').write('Russian selector, interface, disclosure and foreground notification passed on an English Android 15 system.\n')
 adb('shell','cmd','statusbar','collapse')
 adb('shell','am','start','-n','lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity')
 time.sleep(2)
-tap(r'Continue exploring|Tęsti tyrinėjimą')
-assert tap(r'^Stop\s*$|^Stabdyti\s*$'),'Stop button missing'
+tap(r'Continue exploring|Tęsti tyrinėjimą|Продолжить исследование')
+assert tap(r'^Stop\s*$|^Stabdyti\s*$|^Остановить\s*$'),'Stop button missing'
 services=adb('shell','dumpsys','activity','services','lt.tyliaitpk.etn.next').decode()
 assert 'isForeground=true' not in services,'Location service did not stop'
 record.wait(timeout=65)
 adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
-open('evidence/smoke-validation.txt','w').write('Android 15: launch, disclosure, permissions, foreground location start, background notification, stop passed. Coordinates simulated in emulator.\n')
+open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
+
