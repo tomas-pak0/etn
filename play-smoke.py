@@ -41,7 +41,7 @@ assert tap(r'\bEN\b'), 'Language selector missing'
 assert wait_tap(r'\bRU\b'), 'Russian language missing'
 time.sleep(3)
 ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
-assert 'Начать исследование' in texts, 'Russian interface did not load'
+assert 'карта откроется.' in texts, 'Russian interface did not load'
 shot('07-russian-home')
 for _ in range(2):
     adb('shell','input','swipe','1070','1650','1070','400','500')
