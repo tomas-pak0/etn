@@ -64,7 +64,7 @@ jobs:
             sleep 30
             adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
             sleep 12
-            python3 play-smoke.py
+            python3 release-upload/etn-0.6.16/smoke.py
             adb logcat -d -s AndroidRuntime:E | sed '/^---------/d' > evidence/runtime-errors.txt
             test ! -s evidence/runtime-errors.txt
       - name: Publish the verified release files
