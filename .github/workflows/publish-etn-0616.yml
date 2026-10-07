@@ -1,0 +1,74 @@
+name: Publish corrected ETN 0.6.16 files
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-etn-0616.yml'
+      - 'release-upload/etn-0.6.16/**'
+permissions:
+  contents: read
+concurrency:
+  group: publish-etn-0616
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download existing signed base releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release-base
+          gh release download v0.6.14 --repo tomas-pak0/etn --pattern 'ETN-0.6.14.apk' --pattern 'ETN-0.6.14-play.aab' --dir release-base
+      - name: Restore the exact corrected files and check hashes
+        run: python3 release-upload/etn-0.6.16/reconstruct.py
+      - name: Install Android build tools and verify corrected APK
+        run: |
+          SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
+          yes | "$SDKMGR" --licenses >/dev/null || true
+          "$SDKMGR" 'build-tools;36.0.0'
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs release/ETN-0.6.16.apk > release/apk-signature-verification.txt
+          grep -q 'a68cd0b8f2b8cfbe1af4ae7f5aa4cd57055e31dd3d2220ad1aa4b0d6ef371a94' release/apk-signature-verification.txt
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 release/ETN-0.6.16.apk
+          mkdir -p evidence
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and test the exact signed APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          cores: 2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan -camera-back none -camera-front none
+          disable-animations: true
+          script: |
+            adb install release/ETN-0.6.16.apk
+            adb shell wm size 1080x1920
+            adb shell wm density 360
+            adb shell settings put global sysui_demo_allowed 1
+            adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1000
+            adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false
+            sleep 30
+            adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
+            sleep 12
+            python3 play-smoke.py
+            adb logcat -d -s AndroidRuntime:E | sed '/^---------/d' > evidence/runtime-errors.txt
+            test ! -s evidence/runtime-errors.txt
+      - name: Publish the verified release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.6.16 --repo tomas-pak0/etn --target 66bddd90617dda72455eadbf5b0a21c5dbeb00da --title 'ETN 0.6.16 – pataisytas APK' --notes-file release-upload/etn-0.6.16/release-notes.md release/ETN-0.6.16.apk release/ETN-0.6.16-play.aab release/ETN-0.6.16-Google-Play.zip release/SHA256SUMS.txt
