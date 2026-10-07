@@ -37,7 +37,7 @@ def clear_system_dialogs():
     raise AssertionError('Android system remains unresponsive')
 clear_system_dialogs()
 shot('01-home')
-assert tap(r'\bEN\b'), 'Language selector missing'
+assert wait_tap(r'Language / Kalba|^Language$|\bEN\b'), 'Language selector missing'
 assert wait_tap(r'\bRU\b'), 'Russian language missing'
 time.sleep(3)
 ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
