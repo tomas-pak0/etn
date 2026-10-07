@@ -70,9 +70,38 @@ open('evidence/russian-language-validation.txt','w').write('Russian selector, in
 adb('shell','cmd','statusbar','collapse')
 adb('shell','am','start','-n','lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity')
 time.sleep(2)
-tap(r'Continue exploring|Tęsti tyrinėjimą|Продолжить исследование')
-assert tap(r'^Stop\s*$|^Stabdyti\s*$|^Остановить\s*$'),'Stop button missing'
-services=adb('shell','dumpsys','activity','services','lt.tyliaitpk.etn.next').decode()
+# First GPS fixes can queue more than one country/settlement dialog.
+# A tap on the obscured Stop control is ignored by the WebView.
+for _ in range(12):
+    if not tap(r'^Continue exploring$|^Tęsti tyrinėjimą$|^Продолжить исследование
+record.wait(timeout=65)
+adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
+open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
+
+):break
+    time.sleep(0.5)
+assert wait_tap(r'^Stop\\s*$|^Stabdyti\\s*$|^Остановить\\s*
+record.wait(timeout=65)
+adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
+open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
+
+),'Stop button missing'
+for _ in range(8):
+    services=adb('shell','dumpsys','activity','services','lt.tyliaitpk.etn.next').decode()
+    if 'isForeground=true' not in services:break
+    if tap(r'^Continue exploring$|^Tęsti tyrinėjimą$|^Продолжить исследование
+record.wait(timeout=65)
+adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
+open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
+
+):
+        wait_tap(r'^Stop\\s*$|^Stabdyti\\s*$|^Остановить\\s*
+record.wait(timeout=65)
+adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
+open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
+
+)
+    time.sleep(1)
 assert 'isForeground=true' not in services,'Location service did not stop'
 record.wait(timeout=65)
 adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
