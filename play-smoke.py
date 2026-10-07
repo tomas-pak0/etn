@@ -73,34 +73,14 @@ time.sleep(2)
 # First GPS fixes can queue more than one country/settlement dialog.
 # A tap on the obscured Stop control is ignored by the WebView.
 for _ in range(12):
-    if not tap(r'^Continue exploring$|^Tęsti tyrinėjimą$|^Продолжить исследование
-record.wait(timeout=65)
-adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
-open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
-
-):break
+    if not tap(r'^Continue exploring$|^Tęsti tyrinėjimą$|^Продолжить исследование$'):break
     time.sleep(0.5)
-assert wait_tap(r'^Stop\\s*$|^Stabdyti\\s*$|^Остановить\\s*
-record.wait(timeout=65)
-adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
-open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
-
-),'Stop button missing'
+assert wait_tap(r'^Stop\s*$|^Stabdyti\s*$|^Остановить\s*$'),'Stop button missing'
 for _ in range(8):
     services=adb('shell','dumpsys','activity','services','lt.tyliaitpk.etn.next').decode()
     if 'isForeground=true' not in services:break
-    if tap(r'^Continue exploring$|^Tęsti tyrinėjimą$|^Продолжить исследование
-record.wait(timeout=65)
-adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
-open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
-
-):
-        wait_tap(r'^Stop\\s*$|^Stabdyti\\s*$|^Остановить\\s*
-record.wait(timeout=65)
-adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
-open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
-
-)
+    if tap(r'^Continue exploring$|^Tęsti tyrinėjimą$|^Продолжить исследование$'):
+        wait_tap(r'^Stop\s*$|^Stabdyti\s*$|^Остановить\s*$')
     time.sleep(1)
 assert 'isForeground=true' not in services,'Location service did not stop'
 record.wait(timeout=65)
