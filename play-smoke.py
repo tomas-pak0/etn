@@ -42,6 +42,13 @@ def clear_system_dialogs():
     raise AssertionError('Android system remains unresponsive')
 clear_system_dialogs()
 shot('01-home')
+assert wait_tap(r'^Map information$|^Žemėlapio informacija$'), 'Map information toggle missing'
+ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
+assert 'Dark areas are unexplored' in texts or 'Tamsi sritis dar neatrasta' in texts, 'Map explanation did not expand'
+shot('11-map-information-open')
+assert wait_tap(r'^Map information$|^Žemėlapio informacija$'), 'Map information did not close'
+ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
+assert 'Dark areas are unexplored' not in texts and 'Tamsi sritis dar neatrasta' not in texts, 'Map explanation remained open'
 assert wait_tap(r'Language / Kalba|^Language$|\bEN\b'), 'Language selector missing'
 assert wait_tap(r'\bRU\b'), 'Russian language missing'
 time.sleep(3)
@@ -61,6 +68,23 @@ for _ in range(2):
     adb('shell','input','swipe','1070','1650','1070','400','500')
     time.sleep(2)
 shot('02-footer')
+for _ in range(4):
+    if tap(r'^Нашли ошибку\?$'):break
+    adb('shell','input','swipe','1070','1650','1070','700','400')
+    time.sleep(1)
+else:raise AssertionError('Bug report link missing')
+ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
+assert 'ETN DEBUG EMAIL RECEIVER' in texts, 'Native email intent did not open a draft receiver'
+assert 'android.intent.action.SENDTO' in texts and 'To: info@tyliaitpk.com' in texts, 'Incorrect email action or recipient'
+assert 'ETN v0.6.18' in texts and 'Описание ошибки:' in texts, 'Email draft fields missing'
+shot('12-native-email-draft-test')
+adb('shell','input','keyevent','4')
+time.sleep(1)
+for _ in range(4):
+    if has_label('Начать исследование ↗'):break
+    adb('shell','input','swipe','1070','500','1070','1250','400')
+    time.sleep(1)
+open('evidence/support-validation.txt','w').write('Android 15: map information expands and closes; bug-report action opens a debug-only SENDTO email receiver with the recipient, version and localized multiline body. No email was sent.\n')
 record=subprocess.Popen(['adb','shell','screenrecord','--time-limit','60','/sdcard/ETN-location-demo.mp4'])
 assert tap(r'Start exploring|Pradėti tyrinėjimą|Start exploration|Начать исследование'),'Start button missing'
 assert wait_tap(r'^OK\s*$','03-location-disclosure'),'Disclosure confirmation missing'
@@ -100,4 +124,5 @@ assert 'isForeground=true' not in services,'Location service did not stop'
 record.wait(timeout=65)
 adb('pull','/sdcard/ETN-location-demo.mp4','evidence/ETN-location-demo.mp4')
 open('evidence/smoke-validation.txt','w').write('Android 15: launch, Russian language selection, disclosure, permissions, foreground location start, Russian background notification, stop passed. Coordinates simulated in emulator.\n')
+
 

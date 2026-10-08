@@ -44,7 +44,9 @@ button.stat-explored:hover,button.stat-explored:focus-visible{border-color:#a7b1
 @media(max-width:650px){.stats-details summary{padding:14px 16px}.stats-details .details-grid{gap:7px;padding:0 7px 7px}}
 .settlement-stats{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0;margin-bottom:10px}.settlement-stats .stat{min-width:0}.settlement-stats strong{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.settlement-stats button.stat{text-align:left;color:inherit;font:inherit;cursor:pointer}.settlement-stats button.stat:hover,.settlement-stats button.stat:focus-visible{border-color:#a7b1ac;outline-offset:2px}
 @media(max-width:650px){.settlement-stats .stat{gap:5px;padding:11px 7px}.settlement-stats .stat b{font-size:17px}.settlement-stats .stat strong{font-size:clamp(11px,3.2vw,15px)}}
-.data-credit{display:block;color:#82918b;font-size:11px}.data-credit a{color:#bdc8bf}
+.data-credit{display:block;width:100%;color:#82918b;font-size:11px;text-align:center;line-height:1.65}.data-credit a{color:#bdc8bf}
+.report-bug{display:block;width:max-content;max-width:100%;margin:5px auto 0;padding:9px 12px;color:#bdc8bf;font-size:12px;text-align:center;text-underline-offset:3px}
+.report-bug:focus-visible{outline:2px solid #ed3948;outline-offset:3px;border-radius:6px}
 .info-details{margin:14px 0;border:1px solid #34423d;border-radius:14px;background:#141b1b;overflow:hidden}
 .info-details summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;cursor:pointer;font-weight:700;color:#e5e8e3;list-style:none}
 .info-details summary::-webkit-details-marker{display:none}
@@ -78,3 +80,17 @@ button.stat-explored:hover,button.stat-explored:focus-visible{border-color:#a7b1
 .maplibregl-ctrl-attrib{max-width:calc(100% - 70px);font-size:9px!important}
 .etn-location{width:19px;height:19px;border:3px solid #fff;border-radius:50%;background:#dd785f;box-shadow:0 0 0 1px #111a19;z-index:670}
 .map-shell.world-active .maplibregl-control-container{display:none}
+
+/* The map explanation starts closed and remains in the upper-left corner. */
+.map-info{position:absolute;top:20px;left:20px;z-index:750;max-width:calc(100% - 96px);color:#eee}
+.map-info>summary{display:grid;place-items:center;width:42px;height:42px;border:1px solid #71807e;border-radius:10px;background:#111a19;cursor:pointer;list-style:none}
+.map-info>summary::-webkit-details-marker{display:none}
+.map-info>summary>span[aria-hidden]{display:grid;place-items:center;width:22px;height:22px;border:1.5px solid currentColor;border-radius:50%;font:700 16px Georgia,serif}
+.map-info>summary:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.map-info[open]>summary{border-color:#ed3948;background:#392627}
+.map-info-content{width:250px;max-width:100%;max-height:calc(53dvh - 115px);overflow:auto;margin-top:8px;padding:12px;border:1px solid #71807e;border-radius:10px;background:#111a19f5;box-shadow:0 10px 30px #0005;font-size:12px;line-height:1.55}
+.map-info-content .map-label{position:static;display:flex;padding:0;border:0;background:none;letter-spacing:.07em;font-size:10px;overflow-wrap:anywhere}
+.map-info-content .map-label i{flex-shrink:0}
+.map-info-content p{margin:10px 0 0;color:#bdc8bf}
+.map-info-content,.map-info-content *{box-sizing:border-box}
+

@@ -4,7 +4,8 @@
   const KEY='etn-explored-v1', LOOPS_KEY='etn-enclosed-v1';
   const PROGRESS_KEY='etn-country-progress-v1';
   const MAX_ACCURACY=100;
-  const MAX_RADIUS=5000, CLEAR_RADIUS=500;
+  const MAX_RADIUS=window.ETNConfig?.baseRadiusMeters||5000,
+    CLEAR_RADIUS=window.ETNConfig?.clearRadiusMeters||500;
   const $=id=>document.getElementById(id);
   const {t,locale}=window.ETNI18n;
   const native=window.ETNNative||null;
@@ -801,3 +802,4 @@
   $('stop').onclick=()=>{stop();$('status').textContent=t('stopped');};
   $('recenter').onclick=()=>{if(marker){setFollowPosition(true);$('countryPicker').hidden=true;if(worldActive)renderWorld(true);else map.fitBounds(locationBounds(marker.getLatLng()),overviewOptions);}else $('status').textContent=t('noLocation');};
 })();
+

@@ -62,6 +62,9 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         webView.addJavascriptInterface(new Object() {
             @JavascriptInterface public String deviceLanguage() { return Locale.getDefault().getLanguage(); }
+            @JavascriptInterface public void reportBug(String subject, String body, String noMailApp) {
+                runOnUiThread(() -> composeBugReport(subject, body, noMailApp));
+            }
             @JavascriptInterface public void setLanguage(String language) {
                 runOnUiThread(() -> TrackingService.setLanguage(MainActivity.this, language));
             }
@@ -119,6 +122,14 @@ public class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 if (ORIGIN.equals(uri.getScheme() + "://" + uri.getHost())) return false;
+                if ("mailto".equalsIgnoreCase(uri.getScheme())) {
+                    try { startActivity(new Intent(Intent.ACTION_SENDTO, uri)); }
+                    catch (android.content.ActivityNotFoundException ex) {
+                        android.widget.Toast.makeText(MainActivity.this,
+                            "info@tyliaitpk.com", android.widget.Toast.LENGTH_LONG).show();
+                    }
+                    return true;
+                }
                 try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch (Exception ignored) {}
                 return true;
             }
@@ -142,6 +153,22 @@ public class MainActivity extends Activity {
             }
         });
         webView.loadUrl(ORIGIN + "/index.html");
+    }
+
+    private void composeBugReport(String subject, String body, String noMailApp) {
+        Uri mailto = Uri.parse("mailto:info@tyliaitpk.com?subject=" +
+            Uri.encode(subject == null ? "ETN" : subject) + "&body=" +
+            Uri.encode(body == null ? "" : body));
+        Intent mail = new Intent(Intent.ACTION_SENDTO, mailto);
+        mail.putExtra(Intent.EXTRA_EMAIL, new String[]{"info@tyliaitpk.com"});
+        mail.putExtra(Intent.EXTRA_SUBJECT, subject);
+        mail.putExtra(Intent.EXTRA_TEXT, body);
+        try { startActivity(mail); }
+        catch (android.content.ActivityNotFoundException ex) {
+            android.widget.Toast.makeText(this,
+                (noMailApp == null ? "" : noMailApp) + " info@tyliaitpk.com",
+                android.widget.Toast.LENGTH_LONG).show();
+        }
     }
 
     private WebResourceResponse missing() {
@@ -248,3 +275,4 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 }
+

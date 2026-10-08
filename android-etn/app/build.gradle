@@ -7,11 +7,12 @@ android {
         applicationId 'lt.tyliaitpk.etn.next'
         minSdk 26
         targetSdk 36
-        versionCode 35
-        versionName '0.6.17'
+        versionCode 36
+        versionName '0.6.18'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+

@@ -16,7 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify map and movement controls
-        run: node tests/map-controls.test.cjs
+        run: |
+          node tests/map-controls.test.cjs
+          node tests/entitlements.test.cjs
+          node tests/support.test.cjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -82,3 +85,4 @@ jobs:
           name: ETN-Android-verification
           path: evidence/
           retention-days: 7
+

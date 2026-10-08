@@ -1,6 +1,27 @@
 # ETN – Explore the Neighborhood
 
-ETN 0.6.7 atidengia žemėlapį einant ar važiuojant. Aplink kiekvieną išsaugotą GPS tašką visomis kryptimis taikoma vienoda 5 km riba: iki 500 m žemėlapis visiškai atidengtas, nuo 500 m iki 5 km skaidrumas tolygiai mažėja, už 5 km lieka rūkas. Jei apeinamas pakankamai didelis uždaras kontūras, visas jo vidus atidengiamas. Seniau sukaupti tyrinėjimo taškai išlieka, jiems taip pat taikomas vienodas spindulys. Miško, laukų ir miesto klasifikavimas bei jo tinklo užklausos pašalintos.
+## 0.6.18
+
+Duomenų šaltinio eilutė centruota, po ja pridėta „Radote klaidą?“ nuoroda.
+Ji atidaro laiško juodraštį į `info@tyliaitpk.com`, įrašo klaidos aprašymo ir
+atkūrimo veiksmų laukus, programėlės versiją ir pasirinktą kalbą. Laiško
+išsiuntimą valdo vartotojas savo el. pašto programėlėje; GPS vieta automatiškai
+nepridedama. Android naudoja `ACTION_SENDTO`, naršyklė – `mailto`.
+
+Žemėlapio paaiškinimas suskleistas viršutiniame kairiajame kampe po „i“;
+pasirinkimas įsimenamas. Žemėlapio šaltinių informacija taip pat suskleidžiama
+standartiniu MapLibre valdikliu apatiniame kairiajame kampe. Nauji tekstai yra
+visose dešimtyje kalbų. Gyvenviečių sąrašas ir senų atradimų tapatybės išlieka.
+
+Paruoštas atskiras vienos valandos spindulio priedo serverio logikos prototipas
+[`billing/README.md`](../billing/README.md). Mokėjimai dar neaktyvūs; ši versija
+neturi Google Play Billing kliento. Gyvenviečių perėjimo prie žemėlapio šaltinio
+galimybės aprašytos [`map-settlements-plan.md`](../data-tools/map-settlements-plan.md).
+
+Patikra: `node tests/map-controls.test.cjs`, `node tests/support.test.cjs`,
+`node tests/entitlements.test.cjs`.
+
+ETN 0.6.18 atidengia žemėlapį einant ar važiuojant. Aplink kiekvieną išsaugotą GPS tašką visomis kryptimis taikoma vienoda 5 km riba: iki 500 m žemėlapis visiškai atidengtas, nuo 500 m iki 5 km skaidrumas tolygiai mažėja, už 5 km lieka rūkas. Jei apeinamas pakankamai didelis uždaras kontūras, visas jo vidus atidengiamas. Seniau sukaupti tyrinėjimo taškai išlieka, jiems taip pat taikomas vienodas spindulys. Miško, laukų ir miesto klasifikavimas bei jo tinklo užklausos pašalintos.
 
 Android programėlė, kai tyrinėjimas įjungtas, fone prašo GPS ir tinklo vietos atnaujinimų be minimalaus laiko ar atstumo slenksčio; faktinį dažnį lemia telefonas ir GPS signalas. Vietos tikslumas iki 100 m priimamas; naujas taškas išsaugomas pajudėjus bent 10 m. Fono paslauga rodo ETN pranešimo ikoną. Atidarius programėlę, sukaupti GPS taškai įkeliami viena partija, todėl ilgesni maršrutai neturi blokuoti sąsajos po kiekvieno taško. Tyrinėjimą galima sustabdyti programėlėje arba pranešime.
 
@@ -36,4 +57,5 @@ Atradimo langas automatiškai užsidaro po 10 s. Gyventojų skaičius yra apytik
 ### 0.6.17
 
 Po viso pasaulio mygtuku pridėtas foto žemėlapio jungiklis, o žemiau – kompasas, perjungiantis šiaurę arba judėjimo kryptį viršuje. Pasirinkimai įsimenami įrenginyje. Žemėlapis naudoja tą patį MapLibre ir OpenFreeMap sprendimą kaip „Kur aš?“; vietovardžiai lieka tiesūs. Foto sluoksnis – Esri World Imagery. Jei įrenginys negali paleisti WebGL, naudojamas Leaflet su lokaliai įtrauktu sukimo papildiniu. Sukantis perskaičiuojamas rūkas ir šalių ribos, išsaugant 500 m–5 km atidengimą. GPS kryptis ir greitis perduodami iš Android paslaugos; sustojus vaizdas išlaiko paskutinę patikimą kryptį. Senų GPS įrašų kryptis prireikus nustatoma pagal judėjimą. Testai: `node tests/map-controls.test.cjs`.
+
 

@@ -63,7 +63,7 @@
     }
     gl.touchZoomRotate.disableRotation();gl.keyboard.disableRotation();
     gl.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
-    gl.addControl(new maplibregl.AttributionControl({compact:false}),'bottom-left');
+    gl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
     const notice=document.getElementById('mapNotice');
     gl.on('error',()=>{notice.textContent=t('mapUnavailable');notice.hidden=false;});
     gl.on('idle',()=>{if(gl.areTilesLoaded())notice.hidden=true;});
@@ -178,3 +178,4 @@
   }
   window.ETNMap={create};
 })();
+
