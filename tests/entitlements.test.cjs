@@ -43,8 +43,10 @@ function harness(){
     await assert.rejects(invalid.process(invalid.request),/verification failed/);
     assert.equal(invalid.purchases.size,0);assert.equal(invalid.consumes(),0);
   }
-  const unknown=harness();await assert.rejects(unknown.process({...unknown.request,productId:'unknown'}),/Unknown/);
-  assert.equal(unknown.calls(),0);
+  for(const productId of ['unknown','__proto__','toString']){
+    const unknown=harness();await assert.rejects(unknown.process({...unknown.request,productId}),/Unknown/);
+    assert.equal(unknown.calls(),0);
+  }
   const failed=harness();failed.setConsumptionFailure(true);
   assert.equal((await failed.process(failed.request)).consumptionPending,true);
   failed.setConsumptionFailure(false);

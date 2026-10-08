@@ -14,7 +14,7 @@ function createPurchaseProcessor({google,store,clock=Date.now}){
 
   return async function process({accountId,productId,purchaseToken}){
     // accountId must come from the authenticated server context, never from client JSON.
-    const offer=PRODUCTS[productId];
+    const offer=typeof productId==='string'&&Object.hasOwn(PRODUCTS,productId)?PRODUCTS[productId]:null;
     if(!offer)throw Error('Unknown product');
     if(typeof accountId!=='string'||!accountId||typeof purchaseToken!=='string'||!purchaseToken)
       throw Error('Missing purchase identity');
