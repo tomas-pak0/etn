@@ -189,6 +189,9 @@ public class TrackingService extends Service implements LocationListener {
                 fix.put("id", id); fix.put("lat", location.getLatitude());
                 fix.put("lon", location.getLongitude()); fix.put("accuracy", location.getAccuracy());
                 fix.put("time", location.getTime());
+                if (location.hasSpeed()) fix.put("speed", location.getSpeed());
+                if (location.hasBearing()) fix.put("bearing", location.getBearing());
+                if (location.hasBearingAccuracy()) fix.put("bearingAccuracy", location.getBearingAccuracyDegrees());
                 android.content.ContentValues values = new android.content.ContentValues();
                 values.put("id", id); values.put("data", fix.toString());
                 database(this).insertOrThrow("fixes", null, values);

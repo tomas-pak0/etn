@@ -156,6 +156,19 @@
       notificationDenied:"Il GPS funziona in background, ma per l’icona di stato serve il permesso per le notifiche ETN."
     }
   };
+  const mapTranslations={
+    lt:{enablePhoto:'Įjungti foto žemėlapį',disablePhoto:'Išjungti foto žemėlapį',northUp:'Šiaurė viršuje',headingUp:'Judėjimo kryptis viršuje',switchNorthUp:'Rodyti šiaurę viršuje',switchHeadingUp:'Rodyti judėjimo kryptį viršuje',mapUnavailable:'Žemėlapis nepasiekiamas. Patikrink interneto ryšį.'},
+    lv:{enablePhoto:'Ieslēgt foto karti',disablePhoto:'Izslēgt foto karti',northUp:'Ziemeļi augšā',headingUp:'Kustības virziens augšā',switchNorthUp:'Rādīt ziemeļus augšā',switchHeadingUp:'Rādīt kustības virzienu augšā',mapUnavailable:'Karte nav pieejama. Pārbaudi interneta savienojumu.'},
+    pl:{enablePhoto:'Włącz mapę satelitarną',disablePhoto:'Wyłącz mapę satelitarną',northUp:'Północ u góry',headingUp:'Kierunek ruchu u góry',switchNorthUp:'Pokaż północ u góry',switchHeadingUp:'Pokaż kierunek ruchu u góry',mapUnavailable:'Mapa jest niedostępna. Sprawdź połączenie internetowe.'},
+    en:{enablePhoto:'Turn on satellite map',disablePhoto:'Turn off satellite map',northUp:'North up',headingUp:'Direction of travel up',switchNorthUp:'Show north at the top',switchHeadingUp:'Show direction of travel at the top',mapUnavailable:'Map unavailable. Check your internet connection.'},
+    de:{enablePhoto:'Satellitenkarte einschalten',disablePhoto:'Satellitenkarte ausschalten',northUp:'Norden oben',headingUp:'Fahrtrichtung oben',switchNorthUp:'Norden oben anzeigen',switchHeadingUp:'Fahrtrichtung oben anzeigen',mapUnavailable:'Karte nicht verfügbar. Prüfe die Internetverbindung.'},
+    es:{enablePhoto:'Activar mapa satelital',disablePhoto:'Desactivar mapa satelital',northUp:'Norte arriba',headingUp:'Dirección de movimiento arriba',switchNorthUp:'Mostrar el norte arriba',switchHeadingUp:'Mostrar la dirección de movimiento arriba',mapUnavailable:'Mapa no disponible. Comprueba la conexión a Internet.'},
+    fr:{enablePhoto:'Activer la carte satellite',disablePhoto:'Désactiver la carte satellite',northUp:'Nord en haut',headingUp:'Direction du déplacement en haut',switchNorthUp:'Afficher le nord en haut',switchHeadingUp:'Afficher la direction du déplacement en haut',mapUnavailable:'Carte indisponible. Vérifie la connexion Internet.'},
+    it:{enablePhoto:'Attiva la mappa satellitare',disablePhoto:'Disattiva la mappa satellitare',northUp:'Nord in alto',headingUp:'Direzione di movimento in alto',switchNorthUp:'Mostra il nord in alto',switchHeadingUp:'Mostra la direzione di movimento in alto',mapUnavailable:'Mappa non disponibile. Controlla la connessione Internet.'},
+    ru:{enablePhoto:'Включить спутниковую карту',disablePhoto:'Выключить спутниковую карту',northUp:'Север вверху',headingUp:'Направление движения вверху',switchNorthUp:'Показать север вверху',switchHeadingUp:'Показать направление движения вверху',mapUnavailable:'Карта недоступна. Проверьте подключение к Интернету.'},
+    uk:{enablePhoto:'Увімкнути супутникову карту',disablePhoto:'Вимкнути супутникову карту',northUp:'Північ угорі',headingUp:'Напрямок руху вгорі',switchNorthUp:'Показати північ угорі',switchHeadingUp:'Показати напрямок руху вгорі',mapUnavailable:'Карта недоступна. Перевірте підключення до Інтернету.'}
+  };
+  for(const [code,values] of Object.entries(mapTranslations))Object.assign(translations[code],values);
   let saved=null;
   try{saved=localStorage.getItem('etn-language')}catch{}
   let device=navigator.language||'en';

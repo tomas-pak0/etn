@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090d11"><title>ETN · Explore the Neighborhood</title>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css"><link rel="stylesheet" href="style.css?v=0615">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css"><link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css"><link rel="stylesheet" href="style.css?v=0617">
 </head>
 <body>
 <header>
@@ -23,6 +23,13 @@
   <div class="map-label"><i></i><span id="mapLabel" data-i18n="unexplored">NEATRASTA TERITORIJA</span></div>
   <button id="recenter" class="recenter" type="button" aria-label="Show my location">⌖</button>
   <button id="worldButton" class="world-button" type="button" aria-label="Show the whole world" aria-pressed="false" title="World map">◎</button>
+  <button id="photoButton" class="photo-button" type="button" aria-label="Įjungti foto žemėlapį" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="3"/><circle cx="16.5" cy="8" r="2"/><path d="m3 18 6-7 5 6 3-3 4 5"/></svg>
+  </button>
+  <button id="compassButton" class="compass-button" type="button" aria-label="Judėjimo kryptis viršuje" aria-pressed="false">
+    <svg id="compassNeedle" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 6 12h12Z" fill="#ed3948"/><path d="m12 22-6-10h12Z" fill="#f4f3ef"/></svg>
+  </button>
+  <p id="mapNotice" class="map-notice" role="status" hidden></p>
   <div id="countryPicker" class="country-picker" role="dialog" aria-label="Choose a country" hidden>
     <div class="country-picker-head"><strong data-i18n="chooseCountry">Pasirink šalį</strong><button id="closeCountries" type="button" aria-label="Close">×</button></div><div id="countryOptions" class="country-options"></div>
   </div>
@@ -53,11 +60,11 @@
     <p class="fineprint" data-i18n="fineprint">Vietos istorija saugoma tik šiame įrenginyje. Žemėlapis atidengiamas tolygiai nuo 0,5 km iki 5 km, be vietovės klasifikavimo. Android versija, kai įjungtas tyrinėjimas, fone renka GPS taškus ir rodo pranešimą. Šalių ribos ir procentas apytiksliai pagal Natural Earth. Žemėlapiui reikia interneto.</p>
     <p class="fineprint" data-i18n="settlementNote">Gyvenviečių skaičius pagal 2026-09-29 „GeoNames“ rinkinį. Gyvenvietė aptinkama priartėjus prie jos taško; ribų ir visų gyvenviečių pilnumas negarantuojamas. Gyventojų duomenys apytiksliai.</p>
     <p class="fineprint" data-i18n="centerNote">Lietuvoje skaičiuojami 60 savivaldybių centrai (vienas miestas gali būti kelių savivaldybių centras). Kitose šalyse – „GeoNames“ pažymėti vietinių administracinių vienetų centrai; duomenys gali būti nepilni. Centras aptinkamas priartėjus prie jo taško.</p>
-    <p class="fineprint"><a href="https://tomas-pak0.github.io/tyliaitpk/privacy/etn.html" target="_blank" rel="noopener">Privatumo politika / Privacy policy</a></p>
+    <p class="fineprint"><a href="privacy.html">Privatumo politika / Privacy policy</a></p>
   </div>
 </details>
 <small class="data-credit">Gyvenviečių ir šalių duomenys © <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></small>
-<small class="build-version">ETN v0.6.16 · © TyliaiTPk · <span id="copyrightYear">2026</span></small>
+<small class="build-version">ETN v0.6.17 · © TyliaiTPk · <span id="copyrightYear">2026</span></small>
 </main>
 <div id="discoveryDialog" class="discovery-backdrop" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle" hidden>
   <div class="discovery-card"><p class="discovery-kicker" id="discoveryTitle"></p><h2 id="discoveryName"></h2><dl id="discoveryFacts"></dl>
@@ -76,5 +83,5 @@
     <button id="exportCancel" class="export-cancel" type="button" data-i18n="close">Uždaryti</button>
   </div>
 </div>
-<script src="vendor/leaflet/leaflet.js"></script><script src="i18n.js?v=0615"></script><script src="discoveries.js?v=0615"></script><script src="app.js?v=0615"></script>
+<script src="vendor/leaflet/leaflet.js"></script><script src="vendor/leaflet-rotate/leaflet-rotate.umd.min.js"></script><script src="vendor/maplibre/maplibre-gl.js"></script><script src="i18n.js?v=0617"></script><script src="map-engine.js?v=0617"></script><script src="heading.js?v=0617"></script><script src="discoveries.js?v=0617"></script><script src="app.js?v=0617"></script>
 </body></html>

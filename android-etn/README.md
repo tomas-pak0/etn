@@ -23,3 +23,5 @@ Atsisiųsti: [ETN 0.6.12 APK](https://github.com/tomas-pak0/etn/releases/downloa
 0.6.14: kalbų pasirinkime vėl rodomi trumpi kodai ir vėliavos, sąrašas surikiuotas pagal kodą. Android versijos kodas 32, targetSdk 36. APK ir AAB pasirašomi esamu ETN atnaujinimo sertifikatu už viešos repozitorijos ribų.
 
 0.6.16: pridėta rusų kalba (RU) sąsajoje, PDF/TXT/CSV eksportuose ir Android fono pranešimuose. Kalbų kodai surikiuoti DE, EN, ES, FR, IT, LT, LV, PL, RU, UK. Fono pranešimai naudoja programėlėje pasirinktą kalbą. VersionCode 34, targetSdk 36; tas pats applicationId ir ankstesnis ETN pasirašymo sertifikatas.
+0.6.17: versionCode 35. Foto žemėlapio ir kompaso valdikliai; MapLibre ir Leaflet sukimo failus būtina supakuoti į assets kartu su ETN/map-engine.js ir ETN/heading.js. GPS eilės JSON įrašai papildyti greičiu, kryptimi ir krypties tikslumu, nekeičiant ankstesnių įrašų ar duomenų bazės formato. Viešas naujinys pasirašomas tuo pačiu ETN sertifikatu.
+

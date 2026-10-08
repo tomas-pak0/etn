@@ -24,13 +24,9 @@
   window.addEventListener('pageshow',keepScreenAwake);
   setInterval(keepScreenAwake,30000);
   keepScreenAwake();
-  const map=L.map('map',{zoomControl:false,zoomSnap:0,zoomDelta:.5}).setView([55.1694,23.8813],7);
+  const map=window.ETNMap.create('map');
   const locationBounds=point=>L.latLng(point).toBounds(MAX_RADIUS*2);
   const overviewOptions={padding:[40,40],animate:true};
-  L.control.zoom({position:'bottomright'}).addTo(map);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
   function load(){
     try{
       const data=JSON.parse(localStorage.getItem(KEY)||'[]');
@@ -172,6 +168,39 @@
     try{localStorage.setItem(FOLLOW_KEY,String(value));}catch{}
   }
   const worldView=$('worldView'),worldCanvas=$('worldCanvas');
+  const course=window.ETNHeading.create(map.distance);
+  const compassButton=$('compassButton'),photoButton=$('photoButton');
+  let headingUp=false,photoEnabled=false;
+  try{
+    headingUp=localStorage.getItem('etn-heading-up-v1')==='true';
+    photoEnabled=localStorage.getItem('etn-photo-v1')==='true';
+  }catch{}
+  function updateCompass(){
+    compassButton.setAttribute('aria-pressed',String(headingUp));
+    compassButton.setAttribute('aria-label',t(headingUp?'switchNorthUp':'switchHeadingUp'));
+    compassButton.title=t(headingUp?'headingUp':'northUp');
+    $('compassNeedle').style.transform='rotate('+(worldActive?0:-map.getBearing())+'deg)';
+  }
+  function updatePhoto(){
+    map.setPhoto(photoEnabled);
+    photoButton.setAttribute('aria-pressed',String(photoEnabled));
+    photoButton.setAttribute('aria-label',t(photoEnabled?'disablePhoto':'enablePhoto'));
+    photoButton.title=t(photoEnabled?'disablePhoto':'enablePhoto');
+  }
+  compassButton.onclick=()=>{
+    if(worldActive)$('worldButton').onclick();
+    headingUp=!headingUp;
+    try{localStorage.setItem('etn-heading-up-v1',String(headingUp));}catch{}
+    map.setHeading(headingUp&&course.value!==null?course.value:0);
+    updateCompass();
+  };
+  photoButton.onclick=()=>{
+    if(worldActive)$('worldButton').onclick();
+    photoEnabled=!photoEnabled;
+    try{localStorage.setItem('etn-photo-v1',String(photoEnabled));}catch{}
+    updatePhoto();
+  };
+  map.on('rotate',updateCompass);updateCompass();updatePhoto();
   const countryNames=typeof Intl.DisplayNames==='function'
     ?new Intl.DisplayNames([locale],{type:'region'}):null;
   const countryName=feature=>{
@@ -346,8 +375,8 @@
   // Only a deliberate map gesture pauses following. GPS-driven pans do not.
   let mapGesture=false;
   map.getContainer().addEventListener('pointerdown',event=>{
-    if(event.target.closest('.leaflet-control-zoom'))setFollowPosition(false);
-    else if(!event.target.closest('.leaflet-control'))mapGesture=true;
+    if(event.target.closest('.leaflet-control-zoom,.maplibregl-ctrl-zoom-in,.maplibregl-ctrl-zoom-out'))setFollowPosition(false);
+    else if(!event.target.closest('.leaflet-control,.maplibregl-ctrl'))mapGesture=true;
   });
   window.addEventListener('pointerup',()=>{mapGesture=false;});
   window.addEventListener('pointercancel',()=>{mapGesture=false;});
@@ -490,7 +519,7 @@
       seen.add(bucket);
       const p=map.latLngToContainerPoint([lat,lon]);
       const north=map.latLngToContainerPoint([lat+1000/111320,lon]);
-      const outer=MAX_RADIUS*Math.abs(north.y-p.y)/1000;
+      const outer=MAX_RADIUS*Math.hypot(north.x-p.x,north.y-p.y)/1000;
       if(outer<.3||p.x+outer<0||p.x-outer>size.x||p.y+outer<0||p.y-outer>size.y)continue;
       coverageCtx.drawImage(shape,p.x-outer,p.y-outer,2*outer,2*outer);
     }
@@ -596,11 +625,15 @@
     $('worldButton').setAttribute('aria-pressed',String(worldActive));
     $('mapLabel').textContent=t(worldActive?'worldMap':marker?'discovering':'unexplored');
     if(worldActive)renderWorld(true);
-    else map.invalidateSize();
+    else{
+      map.invalidateSize();
+      if(headingUp&&course.value!==null)map.setHeading(course.value);
+    }
+    updateCompass();
   };
   window.addEventListener('resize',()=>{if(worldActive)renderWorld(false);});
   function redraw(){if(!queued){queued=true;requestAnimationFrame(draw);}}
-  map.on('move zoom zoomanim zoomend resize viewreset',redraw);redraw();
+  map.on('move zoom zoomanim zoomend resize viewreset rotate render',redraw);redraw();
   function save(lat,lon){
     const key=coverageKey(lat,lon);
     if(!coverageKeys.has(key)){
@@ -657,10 +690,12 @@
     if(lastFix&&seconds>0&&distance/seconds>70){
       $('status').textContent=t('gpsJump');return;
     }
+    const heading=course.update(position.coords,now);
+    if(render&&headingUp&&!worldActive&&heading!==null)map.setHeading(heading);
     latestPosition=point;
     discoverFix(lat,lon,now);
     if(render&&!marker){
-      marker=L.circleMarker(point,{radius:8,color:'#fff',weight:3,fillColor:'#dd785f',fillOpacity:1}).addTo(map);
+      marker=map.addLocation(point);
       if(followPosition)map.fitBounds(locationBounds(point),{padding:[40,40],animate:false});
     }
     else if(render)marker.setLatLng(point);
@@ -687,7 +722,7 @@
   function stop(){
     if(watcher===-1&&native)native.stopTracking();
     else if(watcher!==null)navigator.geolocation.clearWatch(watcher);
-    watcher=null;lastFix=null;latestPosition=null;trail=[];$('start').disabled=false;$('stop').disabled=true;
+    watcher=null;lastFix=null;latestPosition=null;trail=[];course.reset();$('start').disabled=false;$('stop').disabled=true;
   }
   let nativeStartAt=0;
   let syncing=false;
@@ -701,7 +736,7 @@
         watcher=-1;$('start').disabled=true;$('stop').disabled=false;
         $('status').textContent=t('backgroundTracking');
       }else if(!tracking&&watcher===-1&&Date.now()-nativeStartAt>5000){
-        watcher=null;lastFix=null;latestPosition=null;trail=[];
+        watcher=null;lastFix=null;latestPosition=null;trail=[];course.reset();
         $('start').disabled=false;$('stop').disabled=true;
         $('status').textContent=t('stopped');
       }
@@ -713,7 +748,8 @@
         for(let i=0;i<fixes.length;i++){
           const fix=fixes[i];
           if(!Number.isFinite(fix.lat)||!Number.isFinite(fix.lon)||!Number.isFinite(fix.time))continue;
-          onPosition({coords:{latitude:fix.lat,longitude:fix.lon,accuracy:fix.accuracy},
+          onPosition({coords:{latitude:fix.lat,longitude:fix.lon,accuracy:fix.accuracy,
+            speed:fix.speed,heading:fix.bearing,headingAccuracy:fix.bearingAccuracy},
             timestamp:fix.time,fixId:fix.id},
             true,i===fixes.length-1);
           acknowledged=fix.id;
@@ -724,7 +760,7 @@
         redraw();scheduleProgress();
         if(latestPosition){
           if(marker)marker.setLatLng(latestPosition);
-          else marker=L.circleMarker(latestPosition,{radius:8,color:'#fff',weight:3,fillColor:'#dd785f',fillOpacity:1}).addTo(map);
+          else marker=map.addLocation(latestPosition);
           setCountry({lat:latestPosition[0],lng:latestPosition[1]});
         }
         native.ackFixes(acknowledged);

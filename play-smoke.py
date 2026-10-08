@@ -43,6 +43,15 @@ time.sleep(3)
 ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
 assert 'карта откроется.' in texts, 'Russian interface did not load'
 shot('07-russian-home')
+# The image and compass controls are immediately below the whole-world button.
+assert wait_tap(r'^Включить спутниковую карту$'), 'Photo map switch missing'
+assert any('Выключить спутниковую карту' in n.get('content-desc','') for n in dump().iter('node')), 'Photo map did not turn on'
+shot('10-photo-map')
+assert wait_tap(r'^Показать направление движения вверху$'), 'Compass missing'
+assert any('Показать север вверху' in n.get('content-desc','') for n in dump().iter('node')), 'Heading mode did not turn on'
+assert wait_tap(r'^Показать север вверху$'), 'Compass did not return to north-up'
+assert wait_tap(r'^Выключить спутниковую карту$'), 'Photo map did not turn off'
+open('evidence/map-controls-validation.txt','w').write('Photo map on/off and compass heading-up/north-up controls passed in the Android WebView.\n')
 for _ in range(2):
     adb('shell','input','swipe','1070','1650','1070','400','500')
     time.sleep(2)
