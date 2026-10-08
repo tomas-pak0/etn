@@ -32,6 +32,17 @@
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,
       attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(leaflet);
     const photo=L.tileLayer(imagery,{maxZoom:19,maxNativeZoom:19,attribution:imageryCredit});
+    const credit=leaflet.attributionControl?.getContainer?.();
+    if(credit){
+      // Keep the original attribution node: Leaflet continues to update its sources.
+      const details=document.createElement('details'),summary=document.createElement('summary');
+      details.className='leaflet-control etn-attribution';
+      summary.textContent='i';summary.title=t('mapSources');summary.setAttribute('aria-label',t('mapSources'));
+      credit.parentNode.replaceChild(details,credit);
+      credit.classList.remove('leaflet-control');
+      details.append(summary,credit);
+      L.DomEvent.disableClickPropagation(details);L.DomEvent.disableScrollPropagation(details);
+    }
     // Keep Leaflet's own bearing API intact: the rotation plugin also calls it.
     const map={engine:'raster',
       distance:(a,b)=>leaflet.distance(a,b),
@@ -63,7 +74,21 @@
     }
     gl.touchZoomRotate.disableRotation();gl.keyboard.disableRotation();
     gl.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
-    gl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
+    const attribution=new maplibregl.AttributionControl({compact:true});
+    if(typeof attribution.onAdd==='function'){
+      const onAdd=attribution.onAdd.bind(attribution);
+      attribution.onAdd=value=>{
+        const container=onAdd(value);
+        // This vendor version opens compact controls initially; start minimized.
+        container.classList.add('maplibregl-compact');
+        container.classList.remove('maplibregl-compact-show');
+        container.removeAttribute('open');
+        const summary=container.querySelector('.maplibregl-ctrl-attrib-button');
+        if(summary){summary.title=t('mapSources');summary.setAttribute('aria-label',t('mapSources'));}
+        return container;
+      };
+    }
+    gl.addControl(attribution,'bottom-left');
     const notice=document.getElementById('mapNotice');
     gl.on('error',()=>{notice.textContent=t('mapUnavailable');notice.hidden=false;});
     gl.on('idle',()=>{if(gl.areTilesLoaded())notice.hidden=true;});

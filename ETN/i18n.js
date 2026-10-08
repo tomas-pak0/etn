@@ -180,7 +180,8 @@
     ru:{dataCredit:'Данные населённых пунктов и стран',reportBug:'Нашли ошибку?',mapInfo:'Информация о карте',mapFogNote:'Тёмные области ещё не исследованы. Карта постепенно открывается от 0,5 км до 5 км вокруг посещённых мест.',mapControlsNote:'⌖ — ваше местоположение, ◎ — весь мир. Кнопка фото меняет карту, компас — направление вверху.',bugSubject:'ETN v{version} — сообщение об ошибке',bugBody:'Описание ошибки:\n\n\nДействия перед ошибкой:\n1.\n2.\n\nОжидаемый результат:\n\n\nПо возможности прикрепите снимок экрана.\n\nПриложение: ETN v{version}\nЯзык: {language}\n',noMailApp:'Почтовое приложение не найдено. Напишите на:'},
     uk:{dataCredit:'Дані населених пунктів і країн',reportBug:'Знайшли помилку?',mapInfo:'Інформація про карту',mapFogNote:'Темні області ще не досліджено. Карта поступово відкривається від 0,5 км до 5 км навколо відвіданих місць.',mapControlsNote:'⌖ — ваше місцеположення, ◎ — весь світ. Кнопка фото змінює карту, компас — напрямок угорі.',bugSubject:'ETN v{version} — повідомлення про помилку',bugBody:'Опис помилки:\n\n\nДії перед помилкою:\n1.\n2.\n\nОчікуваний результат:\n\n\nЗа можливості додайте знімок екрана.\n\nЗастосунок: ETN v{version}\nМова: {language}\n',noMailApp:'Поштовий застосунок не знайдено. Напишіть на:'}
   };
-  for(const [code,values] of Object.entries(mapTranslations))Object.assign(translations[code],values,supportTranslations[code]);
+  const mapSources={lt:'Žemėlapio šaltiniai',lv:'Kartes avoti',pl:'Źródła mapy',en:'Map sources',de:'Kartenquellen',es:'Fuentes del mapa',fr:'Sources de la carte',it:'Fonti della mappa',ru:'Источники карты',uk:'Джерела карти'};
+  for(const [code,values] of Object.entries(mapTranslations))Object.assign(translations[code],values,supportTranslations[code],{mapSources:mapSources[code]});
   let saved=null;
   try{saved=localStorage.getItem('etn-language')}catch{}
   let device=navigator.language||'en';

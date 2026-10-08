@@ -93,4 +93,9 @@ button.stat-explored:hover,button.stat-explored:focus-visible{border-color:#a7b1
 .map-info-content .map-label i{flex-shrink:0}
 .map-info-content p{margin:10px 0 0;color:#bdc8bf}
 .map-info-content,.map-info-content *{box-sizing:border-box}
+.etn-attribution{background:#fff;color:#000;border-radius:12px;max-width:calc(100vw - 110px)}
+.etn-attribution>summary{display:grid;place-items:center;width:30px;height:30px;cursor:pointer;list-style:none;font:700 19px Georgia,serif}
+.etn-attribution>summary::-webkit-details-marker{display:none}
+.etn-attribution>summary:focus-visible{outline:2px solid #ed3948;outline-offset:2px}
+.etn-attribution .leaflet-control-attribution{float:none;margin:0;padding:4px 8px 6px;border-radius:0 0 12px 12px}
 

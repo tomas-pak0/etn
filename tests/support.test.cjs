@@ -24,7 +24,7 @@ function context(language,native,storageThrows=false){
   vm.runInContext(read('support.js'),c);
   return {window,elements,saved,c};
 }
-const keys=['dataCredit','reportBug','mapInfo','mapFogNote','mapControlsNote','bugSubject','bugBody','noMailApp'];
+const keys=['dataCredit','reportBug','mapInfo','mapSources','mapFogNote','mapControlsNote','bugSubject','bugBody','noMailApp'];
 for(const language of ['lt','lv','pl','en','de','es','fr','it','ru','uk']){
   const c=context(language),dict=c.window.ETNI18n.dictionaries[language];
   for(const key of keys)assert.equal(typeof dict[key],'string',`${language}: ${key}`);

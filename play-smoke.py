@@ -49,6 +49,14 @@ shot('11-map-information-open')
 assert wait_tap(r'^Map information$|^Žemėlapio informacija$'), 'Map information did not close'
 ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
 assert 'Dark areas are unexplored' not in texts and 'Tamsi sritis dar neatrasta' not in texts, 'Map explanation remained open'
+assert 'OpenMapTiles Data from' not in texts, 'Map attribution starts expanded'
+assert wait_tap(r'^Map sources$|^Žemėlapio šaltiniai$'), 'Map sources toggle missing'
+ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
+assert 'OpenFreeMap' in texts, 'Map sources did not expand'
+assert wait_tap(r'^Map sources$|^Žemėlapio šaltiniai$'), 'Map sources did not close'
+ui=dump(); texts=' '.join(n.get('text','') for n in ui.iter('node'))
+assert 'OpenMapTiles Data from' not in texts, 'Map sources remained open'
+shot('13-map-information-collapsed')
 assert wait_tap(r'Language / Kalba|^Language$|\bEN\b'), 'Language selector missing'
 assert wait_tap(r'\bRU\b'), 'Russian language missing'
 time.sleep(3)

@@ -10,7 +10,7 @@ nepridedama. Android naudoja `ACTION_SENDTO`, naršyklė – `mailto`.
 
 Žemėlapio paaiškinimas suskleistas viršutiniame kairiajame kampe po „i“;
 pasirinkimas įsimenamas. Žemėlapio šaltinių informacija taip pat suskleidžiama
-standartiniu MapLibre valdikliu apatiniame kairiajame kampe. Nauji tekstai yra
+MapLibre arba Leaflet valdikliu apatiniame kairiajame kampe ir pradžioje uždara. Nauji tekstai yra
 visose dešimtyje kalbų. Gyvenviečių sąrašas ir senų atradimų tapatybės išlieka.
 
 Paruoštas atskiras vienos valandos spindulio priedo serverio logikos prototipas
