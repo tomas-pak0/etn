@@ -52,6 +52,17 @@ jobs:
           curl -fLsS https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar -o "$RUNNER_TEMP/bundletool.jar"
           java -jar "$RUNNER_TEMP/bundletool.jar" validate --bundle "$RUNNER_TEMP/etn/android-etn/app/build/outputs/bundle/release/app-release.aab" > evidence/bundle-validation.txt
           git rev-parse HEAD > evidence/source-commit.txt
+      - name: Stage release binaries and public validation tools
+        run: |
+          mkdir -p release-output
+          cp "$RUNNER_TEMP/etn/android-etn/app/build/outputs/apk/release/app-release-unsigned.apk" release-output/
+          cp "$RUNNER_TEMP/etn/android-etn/app/build/outputs/bundle/release/app-release.aab" release-output/
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" release-output/
+          cp "$ANDROID_HOME/build-tools/36.0.0/aapt2" release-output/
+          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" release-output/
+          cp "$RUNNER_TEMP/bundletool.jar" release-output/
+          git rev-parse HEAD > release-output/source-commit.txt
+          sha256sum release-output/*.apk release-output/*.aab > release-output/unsigned-SHA256SUMS.txt
       - name: Enable KVM acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -86,3 +97,8 @@ jobs:
           path: evidence/
           retention-days: 7
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ETN-Android-release
+          path: release-output/
+          retention-days: 7
