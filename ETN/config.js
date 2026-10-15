@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   window.ETNConfig=Object.freeze({
-    version:'0.7.1',
+    version:'0.7.2',
     supportEmail:'info@tyliaitpk.com',
     baseRadiusMeters:5000,
     clearRadiusMeters:500,

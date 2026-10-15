@@ -52,7 +52,7 @@ for _ in range(8):
  adb('shell','input','swipe','500','1400','500','500','350');time.sleep(.5)
 else:raise AssertionError('Report bug missing')
 assert 'ETN DEBUG EMAIL RECEIVER' in text(),'Native mail draft receiver missing'
-assert 'ETN v0.7.1' in text(),'New release version missing from email draft'
+assert 'ETN v0.7.2' in text(),'New release version missing from email draft'
 shot('07-email-draft');adb('shell','input','keyevent','4');time.sleep(1)
 assert tap(r'^Map$|^Žemėlapis$'),'Fixed navigation lost after scrolling'
 assert tap(r'^Stop$|^Stabdyti$'),'Stop missing'

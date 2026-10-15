@@ -14,6 +14,7 @@
       const t=Math.min(1,Math.max(0,(now-target.at)/target.duration)),ease=t*t*(3-2*t);
       current=t===1?target.to:L.latLng([target.from.lat+(target.to.lat-target.from.lat)*ease,
         target.from.lng+shortest(target.from.lng,target.to.lng)*ease]);setPoint(current);
+      window.dispatchEvent?.(new Event('etn-location'));
       if(t<1)frame=requestAnimationFrame(step);else{target=null;frame=null;}
     }
     return{getLatLng:()=>current,setLatLng(point,options={}){
@@ -79,7 +80,8 @@
         else if(leaflet.hasLayer(photo))leaflet.removeLayer(photo);
       },
       addLocation(point){const marker=L.circleMarker(point,{radius:8,color:'#fff',weight:3,
-        fillColor:'#dd785f',fillOpacity:1}).addTo(leaflet);return smoothLocation(point,p=>marker.setLatLng(p));}
+        fillColor:'#dd785f',fillOpacity:1}).addTo(leaflet);const location=smoothLocation(point,p=>marker.setLatLng(p));
+        location.getContainerPoint=()=>leaflet.latLngToContainerPoint(marker.getLatLng());return location;}
     };
     smoothHeading(map,value=>leaflet.setBearing(-value));return map;
   }
@@ -219,7 +221,8 @@
       addLocation(point){
         const element=document.createElement('span');element.className='etn-location';
         const marker=new maplibregl.Marker({element}).setLngLat(lngLat(point)).addTo(gl);
-        return smoothLocation(point,p=>marker.setLngLat(lngLat(p)));
+        const location=smoothLocation(point,p=>marker.setLngLat(lngLat(p)));
+        location.getContainerPoint=()=>gl.project(marker.getLngLat());return location;
       }
     };
     return map;

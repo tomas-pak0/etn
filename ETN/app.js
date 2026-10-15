@@ -182,6 +182,13 @@
     try{localStorage.setItem(FOLLOW_KEY,String(value));}catch{}
   }
   const worldView=$('worldView'),worldCanvas=$('worldCanvas');
+  const worldLocation=document.createElement('span');worldLocation.className='etn-location world-location';worldLocation.setAttribute('aria-hidden','true');worldLocation.hidden=true;worldView.appendChild(worldLocation);
+  function updateWorldLocation(){
+    if(!worldActive||!marker)return;
+    const {lat,lng}=marker.getLatLng(),height=worldView.clientHeight;
+    worldLocation.hidden=false;worldLocation.style.left=(lng+180)/360*(2*height)+'px';worldLocation.style.top=(90-lat)/180*height+'px';
+  }
+  window.addEventListener('etn-location',updateWorldLocation);
   const course=window.ETNHeading.create(map.distance);
   const compassButton=$('compassButton'),photoButton=$('photoButton');
   let headingUp=false,photoEnabled=false;
@@ -457,11 +464,7 @@
       const [x,y]=xy([lon,lat]);
       c.beginPath();c.arc(x,y,1.6,0,Math.PI*2);c.fill();
     }
-    if(marker){
-      const {lat,lng}=marker.getLatLng(),[x,y]=xy([lng,lat]);
-      c.beginPath();c.arc(x,y,5,0,Math.PI*2);
-      c.fillStyle='#e67c68';c.fill();c.strokeStyle='#fff';c.lineWidth=2;c.stroke();
-    }
+    updateWorldLocation();
     if(center){
       const lon=marker?marker.getLatLng().lng:23.8813;
       worldView.scrollLeft=(lon+180)/360*width-worldView.clientWidth/2;
@@ -573,6 +576,12 @@
     return statisticsBusy;
   }
   window.ETNState={map,fogPerformance:()=>({...fog.stats}),country:()=>currentCountry,progress:progressRows,allProgress,statistics,
+    locationPoint(){
+      if(!marker)return null;
+      if(!worldActive)return marker.getContainerPoint();
+      const p=marker.getLatLng(),height=worldView.clientHeight;
+      return{x:(p.lng+180)/360*(2*height)-worldView.scrollLeft,y:(90-p.lat)/180*height-worldView.scrollTop};
+    },
     showCountry(code){const feature=countries.find(f=>f.properties.code===code);if(feature)zoomToCountry(feature);},
     resize(){map.invalidateSize();redraw();if(worldActive)renderWorld();},world:()=>worldActive};
   $('radius').textContent='5 km';
@@ -590,6 +599,7 @@
       if(followPosition&&!worldActive)map.panTo(point,{animate:true,duration});
     }
     presentedTime=latestPositionTime;presentedPoint=point;
+    window.dispatchEvent(new Event('etn-location'));
     setCountry({lat:point[0],lng:point[1]});
     if(worldActive)renderWorld();else $('mapLabel').textContent=t('discovering');
   }

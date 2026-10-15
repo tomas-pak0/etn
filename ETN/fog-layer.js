@@ -7,7 +7,7 @@
     canvas.style.background='#000';map.getContainer().appendChild(canvas);
     const gap=document.createElementNS('http://www.w3.org/2000/svg','svg'),gapPath=document.createElementNS('http://www.w3.org/2000/svg','path');
     gap.classList.add('fog-gap');gap.setAttribute('aria-hidden','true');gapPath.setAttribute('fill','#000');gapPath.setAttribute('fill-rule','evenodd');gap.appendChild(gapPath);map.getContainer().appendChild(gap);
-    const ctx=canvas.getContext('2d');let worker=null,fallback=null,snapshot=null,job=null,dirty=true,timer=null,frame=null,sequence=0;
+    const ctx=canvas.getContext('2d');let worker=null,fallback=null,snapshot=null,job=null,dirty=true,timer=null,frame=null,sequence=0,booting=true;
     const history={points:[],loops:[],countries:[]},stats={paints:0,transforms:0,worker:false,lastPaintMs:0,visibleSamples:0};
     const visible=()=>!document.hidden&&map.getSize().x>0&&map.getSize().y>0;
     function view(){
@@ -33,7 +33,7 @@
       if(uncovered||scale>1.35||scale<.74){dirty=true;schedule(100);}
     }
     function redraw(){if(!frame&&visible())frame=requestAnimationFrame(apply);}
-    function schedule(delay=250){if(timer||job||!visible())return;timer=setTimeout(paint,delay);}
+    function schedule(delay=250){if(timer||job||booting||!visible())return;timer=setTimeout(paint,delay);}
     function paint(){
       timer=null;if(job||!visible())return;if(!dirty&&snapshot)return;
       const size=map.getSize();
@@ -53,18 +53,22 @@
       snapshot={view:data.view,width:data.width,height:data.height};job=null;stats.paints++;stats.lastPaintMs=data.stats.milliseconds;stats.visibleSamples=data.stats.drawn;
       apply();if(dirty)schedule();
     }
-    function useFallback(){
+    function useFallback(error){
       if(worker)worker.terminate();worker=null;stats.worker=false;job=null;
+      booting=false;stats.error=error?.message||'Worker unavailable';
       fallback=core.createScene(maxRadius,clearRadius);fallback.add(history.points);fallback.addLoops(history.loops);fallback.countries(history.countries);dirty=true;schedule(0);
     }
-    try{worker=new Worker('fog-render-worker.js');stats.worker=true;
-      worker.onmessage=event=>{if(event.data.error){useFallback();return;}finish(event.data);};worker.onerror=useFallback;
+    window.ETNWorkers.open('fog-render-worker.js',['fog-core.js']).then(created=>{
+      worker=created;stats.worker=true;
+      worker.onmessage=event=>{if(event.data.error){useFallback(Error(event.data.error));return;}finish(event.data);};worker.onerror=useFallback;
       worker.postMessage({type:'init',maxRadius,clearRadius});
-    }catch{useFallback();}
+      worker.postMessage({type:'points',points:history.points});worker.postMessage({type:'loops',loops:history.loops});worker.postMessage({type:'countries',countries:history.countries});
+      booting=false;schedule(0);
+    }).catch(useFallback);
     function add(type,value){
       if(type==='countries')history.countries=value;else for(const item of value)history[type].push(item);
       if(worker)worker.postMessage({type,[type]:value});
-      else if(type==='points')fallback.add(value);else if(type==='loops')fallback.addLoops(value);else fallback.countries(value);
+      else if(!booting){if(type==='points')fallback.add(value);else if(type==='loops')fallback.addLoops(value);else fallback.countries(value);}
       dirty=true;schedule();
     }
     map.on('move zoom rotate',redraw);

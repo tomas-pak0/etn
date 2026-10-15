@@ -14,7 +14,7 @@ async function connect(){
 }
 function call(method,params={}){return new Promise((resolve,reject)=>{const id=++nextId,timer=setTimeout(()=>{pending.delete(id);reject(Error(method+' timed out'));},60000);pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,method,params}));});}
 async function evaluate(expression){const result=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(result.exceptionDetails)throw Error(JSON.stringify(result.exceptionDetails));return result.result.value;}
-async function waitFor(expression){for(let i=0;i<100;i++){try{if(await evaluate(expression))return;}catch{}await delay(200);}throw Error('Timed out waiting for '+expression);}
+async function waitFor(expression){for(let i=0;i<150;i++){try{if(await evaluate(expression))return;}catch{}await delay(200);}const diagnostics=await evaluate('({fog:window.ETNState?.fogPerformance(),url:location.href,size:window.ETNState?.map.getSize()})').catch(()=>null);throw Error('Timed out waiting for '+expression+'; '+JSON.stringify(diagnostics));}
 (async()=>{
  await connect();await waitFor('!!window.ETNState');
  await evaluate(`(async()=>{

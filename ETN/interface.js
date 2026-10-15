@@ -51,11 +51,21 @@
   const labels=directions[locale]||['N','NE','E','SE','S','SW','W','NW'],overlay=$('cardinalOverlay');
   const marks=Array.from({length:24},(_,i)=>{const node=document.createElement('span');node.className=i%3===0?'cardinal-label':'cardinal-tick';if(i%3===0)node.textContent=labels[i/3];overlay.append(node);return node;});
   function cardinals(){
+    cardinalFrame=null;
     const width=overlay.clientWidth,height=overlay.clientHeight;if(width<1||height<1)return;
-    const bearing=state.world()?0:state.map.getBearing(),hw=Math.max(1,width/2-14),hh=Math.max(1,height/2-14);
-    marks.forEach((node,i)=>{const a=(i*15-bearing)*Math.PI/180,dx=Math.sin(a),dy=-Math.cos(a),d=Math.min(hw/Math.max(1e-9,Math.abs(dx)),hh/Math.max(1e-9,Math.abs(dy)));node.style.left=(width/2+dx*d)+'px';node.style.top=(height/2+dy*d)+'px';node.style.transform='translate(-50%,-50%)'+(i%3?' rotate('+(i*15-bearing)+'deg)':'');});
+    const bearing=state.world()?0:state.map.getBearing(),origin=state.locationPoint()||{x:width/2,y:height/2};
+    marks.forEach((node,i)=>{
+      const p=window.ETNDirections.edgePoint(origin,i*15-bearing,width,height);
+      node.hidden=!p;if(!p)return;
+      node.style.left=p.x+'px';node.style.top=p.y+'px';
+      node.style.transform='translate(-50%,-50%)'+(i%3?' rotate('+(i*15-bearing)+'deg)':'');
+    });
   }
-  state.map.on('rotate resize',cardinals);new ResizeObserver(cardinals).observe(overlay);$('worldButton').addEventListener('click',cardinals);
+  let cardinalFrame=null;
+  function scheduleCardinals(){if(!cardinalFrame&&page==='pageMap'&&!document.hidden)cardinalFrame=requestAnimationFrame(cardinals);}
+  state.map.on('move zoom rotate resize',scheduleCardinals);new ResizeObserver(scheduleCardinals).observe(overlay);$('worldButton').addEventListener('click',scheduleCardinals);
+  $('worldView').addEventListener('scroll',scheduleCardinals,{passive:true});
+  window.addEventListener('etn-location',scheduleCardinals);
   window.addEventListener('etn-progress',()=>{if(page==='pageExplored')statistics();});
   window.ETNInterface={show,flag,formatPercent};
   show('pageMap');

@@ -1,4 +1,7 @@
 name: Build and verify ETN Android
+concurrency:
+  group: etn-android-${{ github.ref }}
+  cancel-in-progress: true
 on:
   push:
     paths:
@@ -26,6 +29,7 @@ jobs:
           node tests/support.test.cjs
           node tests/fog.test.cjs
           node tests/interface.test.cjs
+          node tests/directions.test.cjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
