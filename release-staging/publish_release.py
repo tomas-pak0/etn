@@ -81,13 +81,17 @@ assert checksum(archive)==manifest['releaseArchive']['sha256'],'Release ZIP diff
 with zipfile.ZipFile(archive) as z:assert z.testzip() is None
 (out/'SHA256SUMS.txt').write_text(''.join(checksum(p)+'  '+p.name+'\n' for p in [apk,bundle,archive,source]))
 tag='v'+version
-existing=subprocess.run(['gh','release','view',tag,'--repo',repo],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-assert existing.returncode!=0,'Release already exists; refusing to overwrite it'
 assets=[apk,bundle,archive,out/'SHA256SUMS.txt']
-subprocess.run(['gh','release','create',tag,'--repo',repo,'--target',commit,'--title','ETN '+version,'--draft','--notes-file',str(work/'release-notes.md'),*[str(p) for p in assets]],check=True)
-draft=json.loads(gh('api',f'repos/{repo}/releases/tags/{tag}'))
+def find_release():
+    matches=[r for r in json.loads(gh('api',f'repos/{repo}/releases?per_page=100')) if r['tag_name']==tag]
+    assert len(matches)<=1,'Duplicate release tags'
+    return matches[0] if matches else None
+draft=find_release()
+if draft is None:
+    subprocess.run(['gh','release','create',tag,'--repo',repo,'--target',commit,'--title','ETN '+version,'--draft','--notes-file',str(work/'release-notes.md'),*[str(p) for p in assets]],check=True)
+    draft=find_release()
 assert draft['draft'] and draft['target_commitish']==commit
-uploaded={item['name']:item['size'] for item in draft['assets']}
-assert all(uploaded.get(p.name)==p.stat().st_size for p in assets),'Incomplete release uploads'
-subprocess.run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'],check=True)
+uploaded={item['name']:item for item in draft['assets']}
+assert all(uploaded.get(p.name,{}).get('size')==p.stat().st_size and uploaded[p.name].get('digest')=='sha256:'+checksum(p) for p in assets),'Incomplete or mismatched release uploads'
+gh('api','--method','PATCH',f"repos/{repo}/releases/{draft['id']}",'-F','draft=false','-f','make_latest=true')
 print('Published signed ETN release '+tag)
