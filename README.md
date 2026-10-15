@@ -1,9 +1,14 @@
 # ETN – Explore the Neighborhood
 
-Android programėlė, atidengianti žemėlapį keliaujant ir fiksuojanti naujai atrastas gyvenvietes, šalis bei savivaldybių centrus.
+## ETN 0.7.0
 
-**[Atsisiųsti ETN 0.6.11 APK ir pilną šaltinio archyvą](https://github.com/tomas-pak0/etn/releases/tag/v0.6.11)**
+Fiksuota viršutinė juosta ir keturi apatinio meniu skirtukai: Žemėlapis, Ištirta, Tyrinėtojai ir Informacija. Žemėlapis užima visą tarp juostų likusį plotą, jo kraštuose rodomos pagal kalbą ir pasukimą pritaikytos pasaulio kryptys. Baltas režimas išjungia kartografinį foną; GPS, vietiniai šalių kontūrai ir rūkas veikia toliau. Uždari 50 % matomumo kontūrai nustatomi geografiniame 250 m tinklelyje atskirame Worker ir jų vidus atidengiamas. Ankstesnė istorija ir foninis GPS išsaugomi.
 
-Šioje saugykloje galima peržiūrėti ETN sąsajos, Android karkaso ir duomenų apdorojimo kodą. Pilnas šaltinio archyvas su vietiniais GeoNames duomenimis ir Leaflet failais pateiktas leidimo puslapyje. Įprastas automatinis GitHub šaltinio ZIP apima tik šioje saugykloje esančius failus; Android surinkimui naudokite **ETN-0.6.11-source.zip** iš Releases.
+Pasirenkama paskyra: „ChatGPT“ prisijungimas naršyklėje, ETN slapyvardis ir kilmės šalis. Telefonas patvirtinamas 10 minučių galiojančia užklausa ir sutampančiu šešiaženkliu kodu. Serveriui siunčiami tik šalių ištirti procentai. GPS taškai ir maršrutai lieka telefone. Reitingas parenkamas pagal GPS šalį, rodo pirmus 10 ir tikrą savo vietą papildomoje eilutėje. Vėliava nepriklauso nuo GPS šalies. Paskyra ir jos vieši rezultatai ištrinami iš programėlės arba paskyros puslapio.
 
-Plačiau: [ETN/README.md](ETN/README.md). GeoNames vietų duomenys pateikti pagal CC BY 4.0.
+Paslauga: https://etn-explorers.t0m45-p4k0.chatgpt.site
+Android: versionCode 37, versionName 0.7.0, tas pats applicationId ir pasirašymo raktas.
+
+Patikros: `node tests/interface.test.cjs`, `node tests/fog.test.cjs`, ankstesni map-controls/support/entitlements testai; serverio 12 vartotojų integracinė patikra (autentifikacija, top 10 ir tikra 12 vieta, vėliava, didėjantis sinchronizavimas, ištrynimas).
+
+Visas GeoNames rinkinys atkuriamas Android surinkimo darbo eigoje iš ankstesnio pilno leidimo. Pasirašymo raktai į viešą saugyklą nekeliami.

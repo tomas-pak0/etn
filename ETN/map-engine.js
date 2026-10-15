@@ -29,7 +29,7 @@
     const leaflet=L.map(id,{zoomControl:false,zoomSnap:0,zoomDelta:.5,rotate:true,
       rotateControl:false,dragRotate:false,touchRotate:false}).setView([55.1694,23.8813],7);
     L.control.zoom({position:'bottomright'}).addTo(leaflet);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,
+    const street=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,
       attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(leaflet);
     const photo=L.tileLayer(imagery,{maxZoom:19,maxNativeZoom:19,attribution:imageryCredit});
     const credit=leaflet.attributionControl?.getContainer?.();
@@ -44,7 +44,9 @@
       L.DomEvent.disableClickPropagation(details);L.DomEvent.disableScrollPropagation(details);
     }
     // Keep Leaflet's own bearing API intact: the rotation plugin also calls it.
+    let blankEnabled=false,photoEnabled=false;
     const map={engine:'raster',
+      setBlank(enabled){blankEnabled=!!enabled;leaflet.getContainer().style.background=blankEnabled?'#fff':'';if(blankEnabled){if(leaflet.hasLayer(street))leaflet.removeLayer(street);if(leaflet.hasLayer(photo))leaflet.removeLayer(photo);}else{street.addTo(leaflet);if(photoEnabled)photo.addTo(leaflet);}},
       distance:(a,b)=>leaflet.distance(a,b),
       on(events,handler){leaflet.on(events,handler);return this;},
       getBearing:()=>angle(-leaflet.getBearing()),
@@ -54,7 +56,8 @@
       panTo(point,options){leaflet.panTo(point,options);return this;},
       fitBounds(bounds,options){leaflet.fitBounds(bounds,options);return this;},
       setPhoto(enabled){
-        if(enabled){photo.addTo(leaflet);photo.bringToFront();}
+        photoEnabled=!!enabled;
+        if(enabled&&!blankEnabled){photo.addTo(leaflet);photo.bringToFront();}
         else if(leaflet.hasLayer(photo))leaflet.removeLayer(photo);
       },
       addLocation:point=>L.circleMarker(point,{radius:8,color:'#fff',weight:3,
@@ -63,10 +66,13 @@
     smoothHeading(map,value=>leaflet.setBearing(-value));return map;
   }
   function create(id){
-    let gl;
+    let gl,blankEnabled=false;
+    try{blankEnabled=localStorage.getItem('etn-blank-map-v1')==='true';}catch{}
+    const normalStyle='https://tiles.openfreemap.org/styles/liberty';
+    const blankStyle={version:8,sources:{},layers:[{id:'blank-background',type:'background',paint:{'background-color':'#ffffff'}}]};
     try{
       if(!window.maplibregl)throw Error('Renderer unavailable');
-      gl=new maplibregl.Map({container:id,style:'https://tiles.openfreemap.org/styles/liberty',
+      gl=new maplibregl.Map({container:id,style:blankEnabled?blankStyle:normalStyle,
         center:[23.8813,55.1694],zoom:7,maxZoom:19,pitch:0,maxPitch:0,
         dragRotate:false,pitchWithRotate:false,touchPitch:false,attributionControl:false});
     }catch{
@@ -90,13 +96,13 @@
     }
     gl.addControl(attribution,'bottom-left');
     const notice=document.getElementById('mapNotice');
-    gl.on('error',()=>{notice.textContent=t('mapUnavailable');notice.hidden=false;});
+    gl.on('error',()=>{if(blankEnabled)return;notice.textContent=t('mapUnavailable');notice.hidden=false;});
     gl.on('idle',()=>{if(gl.areTilesLoaded())notice.hidden=true;});
     let photoEnabled=false,styleReady=false;
     const labelPaint=new Map();
     function applyPhoto(){
       if(!styleReady)return;
-      gl.setLayoutProperty('etn-photo','visibility',photoEnabled?'visible':'none');
+      gl.setLayoutProperty('etn-photo','visibility',photoEnabled&&!blankEnabled?'visible':'none');
       for(const [id,paint] of labelPaint){
         gl.setPaintProperty(id,'text-color',photoEnabled?'#ffffff':paint.color);
         gl.setPaintProperty(id,'text-halo-color',photoEnabled?'#182028':paint.halo);
@@ -161,6 +167,7 @@
     gl.on('zoomstart',event=>{if(event.originalEvent)camera=null;});
     const map={
       engine:'vector',renderer:gl,distance,
+      setBlank(enabled){if(blankEnabled===!!enabled)return;blankEnabled=!!enabled;styleReady=false;notice.hidden=true;gl.setStyle(blankEnabled?blankStyle:normalStyle);},
       setPhoto(enabled){photoEnabled=!!enabled;applyPhoto();},
       on(events,handler){
         for(const event of events.split(' ')){

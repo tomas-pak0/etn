@@ -1,0 +1,8 @@
+ETN/data/
+android-etn/app/src/main/assets/
+android-etn/.gradle/
+android-etn/app/build/
+*.apk
+*.aab
+*.p12
+*-key-password.txt

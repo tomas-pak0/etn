@@ -48,6 +48,18 @@
   }
   let points=[],loops=[],trail=[],watcher=null,lastFix=null,latestPosition=null,marker=null,queued=false;
   let importing=false;
+  let automaticHoles=[],fogWorker=null,fogBatch=[],fogSendTimer=null;
+  const allEnclosures=()=>loops.concat(automaticHoles);
+  function queueFogGeometry(batch,initial=false){
+    if(!fogWorker&&typeof Worker==='function'){
+      fogWorker=new Worker('fog-worker.js');
+      fogWorker.onmessage=event=>{automaticHoles=event.data.holes||[];redraw();scheduleProgress();};
+    }
+    if(!fogWorker)return;
+    for(const point of batch)fogBatch.push(point);
+    if(fogSendTimer)clearTimeout(fogSendTimer);
+    fogSendTimer=setTimeout(()=>{fogWorker.postMessage({points:fogBatch,initial});fogBatch=[];fogSendTimer=null;},initial?0:500);
+  }
   const coverageKeys=new Set(),pendingCoverage=new Map(),pendingRaw=[],pendingLoops=[];
   let database=null,storageReady=false,recordCount=0,writeChain=Promise.resolve(),writeTimer=null;
   // 75 m buckets keep one fog sample per visited place; the full fix history
@@ -111,6 +123,7 @@
       });
       $('count').textContent=String(recordCount);
       storageReady=true;
+      queueFogGeometry(points,true);
       redraw();scheduleProgress();
       if(native)syncNative();
     }catch{
@@ -296,6 +309,7 @@
     $('country').textContent=found?countryName(found):t('outsideCountries');
     $('countryFlag').textContent=found?countryFlag(found.properties.code):'🌐';
     $('countryProgress').textContent=found?t('calculating'):'–';
+    window.dispatchEvent(new CustomEvent('etn-country',{detail:{code:found?.properties.code||null}}));
     updateBorders();scheduleProgress();
   }
   function zoomToCountry(feature){
@@ -356,7 +370,7 @@
         bounds.extend([lat+latRadius,lon+lonRadius]);
       }
     }
-    for(const ring of loops)for(const [lat,lon] of ring){
+    for(const ring of allEnclosures())for(const [lat,lon] of ring){
       if(inCountry(lon,lat,feature))bounds.extend([lat,lon]);
     }
     return bounds;
@@ -429,7 +443,7 @@
         }
       }
     }
-    for(const ring of loops){
+    for(const ring of allEnclosures()){
       const ys=ring.map(p=>p[0]),xs=ring.map(p=>p[1]);
       const polygon=ring.map(([lat,lon])=>[lon,lat]);
       const minX=Math.floor((Math.max(west,Math.min(...xs))-west)*metersPerDegree*cosBase/step);
@@ -466,6 +480,7 @@
       }
       $('countryProgress').textContent=value===0?'0 %':
         value.toLocaleString(locale,{minimumFractionDigits:5,maximumFractionDigits:5})+' %';
+      window.dispatchEvent(new CustomEvent('etn-progress'));
     },Math.max(300,10000-(Date.now()-lastProgressAt)));
   }
   loadCountries();
@@ -501,6 +516,7 @@
   function draw(){
     queued=false;
     const size=map.getSize(),ratio=Math.min(devicePixelRatio||1,2);
+    if(size.x<=0||size.y<=0)return;
     if(canvas.width!==Math.round(size.x*ratio)||canvas.height!==Math.round(size.y*ratio)){
       canvas.width=Math.round(size.x*ratio);canvas.height=Math.round(size.y*ratio);
     }
@@ -527,7 +543,7 @@
     // A walked, closed ring reveals everything it surrounds, even where
     // individual directional clearings leave fog in the middle.
     coverageCtx.fillStyle='#fff';
-    for(const ring of loops){
+    for(const ring of allEnclosures()){
       coverageCtx.beginPath();
       ring.forEach(([lat,lon],index)=>{
         const p=map.latLngToContainerPoint([lat,lon]);
@@ -538,7 +554,7 @@
     const fog=coverageCtx.getImageData(0,0,coverage.width,coverage.height);
     for(let i=0;i<fog.data.length;i+=4){
       const visible=fog.data[i];
-      fog.data[i]=5;fog.data[i+1]=10;fog.data[i+2]=12;
+      fog.data[i]=0;fog.data[i+1]=0;fog.data[i+2]=0;
       fog.data[i+3]=255-visible;
     }
     ctx.putImageData(fog,0,0);
@@ -640,6 +656,7 @@
     if(!coverageKeys.has(key)){
       coverageKeys.add(key);
       points.push([lat,lon]);pendingCoverage.set(key,[lat,lon]);
+      queueFogGeometry([[lat,lon]]);
       scheduleStorage();
     }
     trail.push([lat,lon]);
@@ -675,6 +692,52 @@
       return;
     }
   }
+  function progressRows(){
+    return Object.entries(maximumProgress).filter(([,percent])=>Number.isFinite(percent)&&percent>0).map(([code,percent])=>{
+      const feature=countries.find(f=>f.properties.code===code);
+      return{code,percent,name:feature?countryName(feature):code,areaKm2:feature?feature.area*percent/100/1e6:0};
+    }).sort((a,b)=>b.percent-a.percent);
+  }
+  let historyProgressBusy=null;
+  async function allProgress(){
+    if(historyProgressBusy)return historyProgressBusy;
+    historyProgressBusy=(async()=>{
+      if(!storageReady||!bordersReady)return progressRows();
+      const codes=new Set(points.map(([lat,lon])=>findCountry([lat,lon])?.properties.code).filter(Boolean));
+      for(const code of codes){
+        const feature=countries.find(f=>f.properties.code===code);
+        maximumProgress[code]=Math.max(Number(maximumProgress[code])||0,exploredPercent(feature));
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+      try{localStorage.setItem(PROGRESS_KEY,JSON.stringify(maximumProgress));}catch{}
+      return progressRows();
+    })().finally(()=>{historyProgressBusy=null;});
+    return historyProgressBusy;
+  }
+  async function statistics(){
+    if(!database||!storageReady)return null;
+    await flushStorage();
+    return new Promise(resolve=>{
+      let previous=null,distance=0,first=null,last=null;const days=new Set();
+      const req=database.transaction('fixes','readonly').objectStore('fixes').openCursor();
+      req.onsuccess=()=>{
+        const cursor=req.result;
+        if(!cursor){resolve({distance,first,last,days:days.size,count:recordCount});return;}
+        const p=cursor.value;
+        if(Number.isFinite(p.time)&&p.time>0){
+          first=first===null?p.time:Math.min(first,p.time);last=last===null?p.time:Math.max(last,p.time);
+          const date=new Date(p.time);days.add([date.getFullYear(),date.getMonth(),date.getDate()].join('-'));
+          if(previous){const seconds=(p.time-previous.time)/1000,d=map.distance([p.lat,p.lon],[previous.lat,previous.lon]);if(seconds>0&&seconds<=120&&d/seconds<=70)distance+=d;}
+          previous=p;
+        }else previous=null;
+        cursor.continue();
+      };
+      req.onerror=()=>resolve(null);
+    });
+  }
+  window.ETNState={map,country:()=>currentCountry,progress:progressRows,allProgress,statistics,
+    showCountry(code){const feature=countries.find(f=>f.properties.code===code);if(feature)zoomToCountry(feature);},
+    resize(){map.invalidateSize();redraw();if(worldActive)renderWorld();},world:()=>worldActive};
   $('radius').textContent='5 km';
   $('terrain').textContent=t('allDirections');
   function onPosition(position,fromNative=false,render=true){

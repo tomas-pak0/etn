@@ -31,7 +31,7 @@ for(const language of ['lt','lv','pl','en','de','es','fr','it','ru','uk']){
   const href=c.elements.get('reportBug').href;
   const parsed=new URL(href);
   assert.equal(parsed.pathname,'info@tyliaitpk.com');
-  assert(parsed.searchParams.get('subject').includes('0.6.18'));
+  assert(parsed.searchParams.get('subject').includes(c.window.ETNConfig.version));
   const body=parsed.searchParams.get('body');
   assert(body.includes('\n1.\n2.\n'));assert(body.includes(language));
   assert(!body.includes('{version}'));assert(!body.includes('{language}'));
