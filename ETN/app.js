@@ -26,6 +26,8 @@
   setInterval(keepScreenAwake,30000);
   keepScreenAwake();
   const map=window.ETNMap.create('map');
+  const fog=window.ETNFogLayer.create(map,MAX_RADIUS,CLEAR_RADIUS);
+  const progress=window.ETNProgress.create(MAX_RADIUS,CLEAR_RADIUS);
   const locationBounds=point=>L.latLng(point).toBounds(MAX_RADIUS*2);
   const overviewOptions={padding:[40,40],animate:true};
   function load(){
@@ -46,19 +48,17 @@
           Number.isFinite(p[1])&&Math.abs(p[0])<=90&&Math.abs(p[1])<=180)):[];
     }catch{return [];}
   }
-  let points=[],loops=[],trail=[],watcher=null,lastFix=null,latestPosition=null,marker=null,queued=false;
+  let points=[],loops=[],trail=[],watcher=null,lastFix=null,latestPosition=null,marker=null;
   let importing=false;
-  let automaticHoles=[],fogWorker=null,fogBatch=[],fogSendTimer=null;
-  const allEnclosures=()=>loops.concat(automaticHoles);
-  function queueFogGeometry(batch,initial=false){
-    if(!fogWorker&&typeof Worker==='function'){
-      fogWorker=new Worker('fog-worker.js');
-      fogWorker.onmessage=event=>{automaticHoles=event.data.holes||[];redraw();scheduleProgress();};
-    }
-    if(!fogWorker)return;
-    for(const point of batch)fogBatch.push(point);
-    if(fogSendTimer)clearTimeout(fogSendTimer);
-    fogSendTimer=setTimeout(()=>{fogWorker.postMessage({points:fogBatch,initial});fogBatch=[];fogSendTimer=null;},initial?0:500);
+  const allEnclosures=()=>loops;
+  let coverageBatch=[],coverageSendTimer=null;
+  function queueCoverage(batch,initial=false){
+    for(const point of batch)coverageBatch.push(point);
+    if(coverageSendTimer)return;
+    coverageSendTimer=setTimeout(()=>{
+      const added=coverageBatch;coverageBatch=[];coverageSendTimer=null;
+      fog.add(added);progress.add(added);
+    },initial?0:200);
   }
   const coverageKeys=new Set(),pendingCoverage=new Map(),pendingRaw=[],pendingLoops=[];
   let database=null,storageReady=false,recordCount=0,writeChain=Promise.resolve(),writeTimer=null;
@@ -123,7 +123,7 @@
       });
       $('count').textContent=String(recordCount);
       storageReady=true;
-      queueFogGeometry(points,true);
+      queueCoverage(points,true);fog.loops(loops);progress.loops(loops);
       redraw();scheduleProgress();
       if(native)syncNative();
     }catch{
@@ -288,6 +288,7 @@
       const data=JSON.parse(await new Response(stream).text());
       if(data.type!=='FeatureCollection'||!Array.isArray(data.features))throw Error('Invalid borders');
       countries=data.features.map(prepareCountry);
+      fog.countries(countries);progress.countries(countries);
       if(marker)setCountry(marker.getLatLng());
       bordersReady=true;
       for(const [lat,lon,time] of waitingDiscoveries)discoverFix(lat,lon,time);
@@ -398,86 +399,25 @@
   map.getContainer().addEventListener('wheel',()=>setFollowPosition(false),{passive:true});
   map.on('dragstart',()=>setFollowPosition(false));
   map.on('movestart',()=>{if(mapGesture)setFollowPosition(false);});
-  function pointVisibility(distance){
-    if(distance<=CLEAR_RADIUS)return 1;
-    if(distance>=MAX_RADIUS)return 0;
-    return (MAX_RADIUS-distance)/(MAX_RADIUS-CLEAR_RADIUS);
-  }
-  function exploredPercent(feature){
-    // A coarse grid approximates the union of all visibility masks. Each cell
-    // retains its greatest visibility, matching the on-screen fog composition.
-    const [west,south,east,north]=feature.bounds;
-    const baseLat=(south+north)/2,cosBase=Math.max(.01,Math.cos(baseLat*Math.PI/180));
-    const step=500,metersPerDegree=111195;
-    const latAt=y=>south+(y+.5)*step/metersPerDegree;
-    const lonAt=x=>west+(x+.5)*step/(metersPerDegree*cosBase);
-    const cells=new Map();
-    const add=(x,y,visibility)=>{
-      if(visibility<=0)return;
-      const lon=lonAt(x),lat=latAt(y);
-      if(!inCountry(lon,lat,feature))return;
-      const key=x+','+y;
-      if(visibility>(cells.get(key)||0))cells.set(key,visibility);
-    };
-    const visited=new Set();
-    for(const [lat,lon] of points){
-      const maxRadius=MAX_RADIUS;
-      const bucket=Math.floor(lat*1112)+','+Math.floor(lon*1112*cosBase);
-      if(visited.has(bucket))continue;
-      visited.add(bucket);
-      if(lon<(west-maxRadius/(111195*cosBase))||lon>(east+maxRadius/(111195*cosBase))||
-        lat<(south-maxRadius/111195)||lat>(north+maxRadius/111195))continue;
-      const cx=(lon-west)*metersPerDegree*cosBase/step-.5;
-      const cy=(lat-south)*metersPerDegree/step-.5;
-      const reach=Math.ceil(maxRadius/step)+1;
-      for(let y=Math.floor(cy-reach);y<=Math.ceil(cy+reach);y++){
-        const sampleLat=latAt(y),dy=(sampleLat-lat)*metersPerDegree;
-        if(Math.abs(dy)>=maxRadius)continue;
-        const halfWidth=Math.sqrt(maxRadius**2-dy**2);
-        const lonFactor=metersPerDegree*Math.max(.01,Math.cos(sampleLat*Math.PI/180));
-        const left=Math.ceil((lon-halfWidth/lonFactor-west)*metersPerDegree*cosBase/step-.5);
-        const right=Math.floor((lon+halfWidth/lonFactor-west)*metersPerDegree*cosBase/step-.5);
-        for(let x=left;x<=right;x++){
-          const dx=(lonAt(x)-lon)*lonFactor,distance=Math.hypot(dx,dy);
-          add(x,y,pointVisibility(distance));
-        }
-      }
+  function rememberProgress(values){
+    let changed=false;
+    for(const [code,calculated] of Object.entries(values)){
+      const previous=Number(maximumProgress[code])||0;
+      if(Number.isFinite(calculated)&&calculated>previous){maximumProgress[code]=calculated;changed=true;}
     }
-    for(const ring of allEnclosures()){
-      const ys=ring.map(p=>p[0]),xs=ring.map(p=>p[1]);
-      const polygon=ring.map(([lat,lon])=>[lon,lat]);
-      const minX=Math.floor((Math.max(west,Math.min(...xs))-west)*metersPerDegree*cosBase/step);
-      const maxX=Math.ceil((Math.min(east,Math.max(...xs))-west)*metersPerDegree*cosBase/step);
-      const minY=Math.floor((Math.max(south,Math.min(...ys))-south)*metersPerDegree/step);
-      const maxY=Math.ceil((Math.min(north,Math.max(...ys))-south)*metersPerDegree/step);
-      for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){
-        if(inRing(lonAt(x),latAt(y),polygon))add(x,y,1);
-      }
-    }
-    let revealed=0;
-    for(const [key,visibility] of cells){
-      const y=Number(key.slice(key.indexOf(',')+1));
-      revealed+=visibility*step*step*Math.cos(latAt(y)*Math.PI/180)/cosBase;
-    }
-    return Math.min(100,100*revealed/feature.area);
+    if(changed)try{localStorage.setItem(PROGRESS_KEY,JSON.stringify(maximumProgress));}
+    catch{$('status').textContent=t('noStorage');}
   }
   function scheduleProgress(){
     if(!currentCountry)return;
     if(progressTimer&&progressCountry===currentCountry)return;
     clearTimeout(progressTimer);progressCountry=currentCountry;
-    progressTimer=setTimeout(()=>{
-      progressTimer=null;
-      if(!currentCountry)return;
-      lastProgressAt=Date.now();
-      const code=currentCountry.properties.code;
-      const calculated=exploredPercent(currentCountry);
-      const previous=Number(maximumProgress[code])||0;
-      const value=Math.max(previous,calculated);
-      if(value>previous){
-        maximumProgress[code]=value;
-        try{localStorage.setItem(PROGRESS_KEY,JSON.stringify(maximumProgress));}
-        catch{$('status').textContent=t('noStorage');}
-      }
+    progressTimer=setTimeout(async()=>{
+      progressTimer=null;const selected=currentCountry;if(!selected)return;
+      lastProgressAt=Date.now();const code=selected.properties.code;
+      rememberProgress(await progress.calculate([code]));
+      if(selected!==currentCountry)return;
+      const value=Number(maximumProgress[code])||0;
       $('countryProgress').textContent=value===0?'0 %':
         value.toLocaleString(locale,{minimumFractionDigits:5,maximumFractionDigits:5})+' %';
       window.dispatchEvent(new CustomEvent('etn-progress'));
@@ -485,111 +425,6 @@
   }
   loadCountries();
   $('count').textContent='…';
-  const canvas=document.createElement('canvas');
-  canvas.className='fog-canvas';canvas.setAttribute('aria-hidden','true');
-  map.getContainer().appendChild(canvas);
-  const ctx=canvas.getContext('2d');
-  const borderCanvas=document.createElement('canvas');
-  borderCanvas.className='border-canvas';borderCanvas.setAttribute('aria-hidden','true');
-  map.getContainer().appendChild(borderCanvas);
-  const borderCtx=borderCanvas.getContext('2d');
-  const coverage=document.createElement('canvas');
-  const coverageCtx=coverage.getContext('2d',{willReadFrequently:true});
-  const MASK_SIZE=384;
-  let radialMask=null;
-  function getRadialMask(){
-    if(radialMask)return radialMask;
-    radialMask=document.createElement('canvas');
-    radialMask.width=radialMask.height=MASK_SIZE;
-    const c=radialMask.getContext('2d');
-    const image=c.createImageData(MASK_SIZE,MASK_SIZE);
-    for(let y=0;y<MASK_SIZE;y++)for(let x=0;x<MASK_SIZE;x++){
-      const distance=Math.hypot(x+.5-MASK_SIZE/2,y+.5-MASK_SIZE/2)*MAX_RADIUS/(MASK_SIZE/2);
-      const value=Math.round(255*pointVisibility(distance));
-      const offset=(y*MASK_SIZE+x)*4;
-      image.data[offset]=image.data[offset+1]=image.data[offset+2]=value;
-      image.data[offset+3]=255;
-    }
-    c.putImageData(image,0,0);
-    return radialMask;
-  }
-  function draw(){
-    queued=false;
-    const size=map.getSize(),ratio=Math.min(devicePixelRatio||1,2);
-    if(size.x<=0||size.y<=0)return;
-    if(canvas.width!==Math.round(size.x*ratio)||canvas.height!==Math.round(size.y*ratio)){
-      canvas.width=Math.round(size.x*ratio);canvas.height=Math.round(size.y*ratio);
-    }
-    if(coverage.width!==canvas.width||coverage.height!==canvas.height){
-      coverage.width=canvas.width;coverage.height=canvas.height;
-    }
-    coverageCtx.setTransform(ratio,0,0,ratio,0,0);
-    coverageCtx.globalCompositeOperation='source-over';
-    coverageCtx.fillStyle='#000';
-    coverageCtx.fillRect(0,0,size.x,size.y);
-    coverageCtx.globalCompositeOperation='lighten';
-    const shape=getRadialMask(),seen=new Set();
-    for(const [lat,lon] of points){
-      const cos=Math.max(.01,Math.cos(lat*Math.PI/180));
-      const bucket=Math.floor(lat*111195/75)+','+Math.floor(lon*111195*cos/75);
-      if(seen.has(bucket))continue;
-      seen.add(bucket);
-      const p=map.latLngToContainerPoint([lat,lon]);
-      const north=map.latLngToContainerPoint([lat+1000/111320,lon]);
-      const outer=MAX_RADIUS*Math.hypot(north.x-p.x,north.y-p.y)/1000;
-      if(outer<.3||p.x+outer<0||p.x-outer>size.x||p.y+outer<0||p.y-outer>size.y)continue;
-      coverageCtx.drawImage(shape,p.x-outer,p.y-outer,2*outer,2*outer);
-    }
-    // A walked, closed ring reveals everything it surrounds, even where
-    // individual directional clearings leave fog in the middle.
-    coverageCtx.fillStyle='#fff';
-    for(const ring of allEnclosures()){
-      coverageCtx.beginPath();
-      ring.forEach(([lat,lon],index)=>{
-        const p=map.latLngToContainerPoint([lat,lon]);
-        if(index===0)coverageCtx.moveTo(p.x,p.y);else coverageCtx.lineTo(p.x,p.y);
-      });
-      coverageCtx.closePath();coverageCtx.fill();
-    }
-    const fog=coverageCtx.getImageData(0,0,coverage.width,coverage.height);
-    for(let i=0;i<fog.data.length;i+=4){
-      const visible=fog.data[i];
-      fog.data[i]=0;fog.data[i+1]=0;fog.data[i+2]=0;
-      fog.data[i+3]=255-visible;
-    }
-    ctx.putImageData(fog,0,0);
-    drawBorders(size,ratio);
-  }
-  function drawBorders(size,ratio){
-    if(borderCanvas.width!==canvas.width||borderCanvas.height!==canvas.height){
-      borderCanvas.width=canvas.width;borderCanvas.height=canvas.height;
-    }
-    borderCtx.setTransform(ratio,0,0,ratio,0,0);
-    borderCtx.clearRect(0,0,size.x,size.y);
-    if(!countries.length)return;
-    const visible=map.getBounds();
-    borderCtx.strokeStyle='#cbd2d2';borderCtx.lineWidth=1.65;
-    borderCtx.lineCap='round';borderCtx.lineJoin='round';
-    for(const feature of countries){
-      const [west,south,east,north]=feature.bounds;
-      if(!visible.intersects([[south,west],[north,east]]))continue;
-      borderCtx.beginPath();
-      for(const polygon of rings(feature))for(const ring of polygon){
-        let previous=null;
-        for(const [lon,lat] of ring){
-          const next=map.latLngToContainerPoint([lat,lon]);
-          if(previous&&Math.min(previous.x,next.x)<=size.x+2&&
-            Math.max(previous.x,next.x)>=-2&&Math.min(previous.y,next.y)<=size.y+2&&
-            Math.max(previous.y,next.y)>=-2){
-            borderCtx.moveTo(previous.x,previous.y);
-            borderCtx.lineTo(next.x,next.y);
-          }
-          previous=next;
-        }
-      }
-      borderCtx.stroke();
-    }
-  }
   function renderWorld(center=false){
     if(!worldActive)return;
     const height=worldView.clientHeight,width=2*height;
@@ -649,14 +484,14 @@
     updateCompass();
   };
   window.addEventListener('resize',()=>{if(worldActive)renderWorld(false);});
-  function redraw(){if(!queued){queued=true;requestAnimationFrame(draw);}}
-  map.on('move zoom zoomanim zoomend resize viewreset rotate render',redraw);redraw();
+  function redraw(){fog.redraw();}
+  redraw();
   function save(lat,lon){
     const key=coverageKey(lat,lon);
     if(!coverageKeys.has(key)){
       coverageKeys.add(key);
       points.push([lat,lon]);pendingCoverage.set(key,[lat,lon]);
-      queueFogGeometry([[lat,lon]]);
+      queueCoverage([[lat,lon]]);
       scheduleStorage();
     }
     trail.push([lat,lon]);
@@ -687,7 +522,7 @@
       let perimeter=map.distance(current,trail[i]);
       for(let j=1;j<ring.length;j++)perimeter+=map.distance(ring[j-1],ring[j]);
       if(perimeter<450||ringArea(ring)<15000)continue;
-      loops.push(ring);pendingLoops.push(ring);scheduleStorage();
+      loops.push(ring);pendingLoops.push(ring);fog.loops([ring]);progress.loops([ring]);scheduleStorage();
       trail=[current];
       return;
     }
@@ -703,43 +538,61 @@
     if(historyProgressBusy)return historyProgressBusy;
     historyProgressBusy=(async()=>{
       if(!storageReady||!bordersReady)return progressRows();
-      const codes=new Set(points.map(([lat,lon])=>findCountry([lat,lon])?.properties.code).filter(Boolean));
-      for(const code of codes){
-        const feature=countries.find(f=>f.properties.code===code);
-        maximumProgress[code]=Math.max(Number(maximumProgress[code])||0,exploredPercent(feature));
-        await new Promise(resolve=>setTimeout(resolve,0));
-      }
-      try{localStorage.setItem(PROGRESS_KEY,JSON.stringify(maximumProgress));}catch{}
+      rememberProgress(await progress.calculate());
       return progressRows();
     })().finally(()=>{historyProgressBusy=null;});
     return historyProgressBusy;
   }
+  let statisticsBusy=null,statisticsCount=-1;
+  const totals={distance:0,first:null,last:null,days:new Set(),previous:null,key:null};
+  function statisticsValue(){return{distance:totals.distance,first:totals.first,last:totals.last,days:totals.days.size,count:statisticsCount};}
   async function statistics(){
     if(!database||!storageReady)return null;
     await flushStorage();
-    return new Promise(resolve=>{
-      let previous=null,distance=0,first=null,last=null;const days=new Set();
-      const req=database.transaction('fixes','readonly').objectStore('fixes').openCursor();
+    if(statisticsBusy)return statisticsBusy;
+    if(statisticsCount===recordCount)return statisticsValue();
+    const count=recordCount;
+    statisticsBusy=new Promise(resolve=>{
+      // After the first read, visit only newly appended fixes.
+      const range=totals.key===null?null:IDBKeyRange.lowerBound(totals.key,true);
+      const req=database.transaction('fixes','readonly').objectStore('fixes').openCursor(range);
       req.onsuccess=()=>{
         const cursor=req.result;
-        if(!cursor){resolve({distance,first,last,days:days.size,count:recordCount});return;}
-        const p=cursor.value;
+        if(!cursor){statisticsCount=count;resolve(statisticsValue());return;}
+        const p=cursor.value;totals.key=cursor.key;
         if(Number.isFinite(p.time)&&p.time>0){
-          first=first===null?p.time:Math.min(first,p.time);last=last===null?p.time:Math.max(last,p.time);
-          const date=new Date(p.time);days.add([date.getFullYear(),date.getMonth(),date.getDate()].join('-'));
-          if(previous){const seconds=(p.time-previous.time)/1000,d=map.distance([p.lat,p.lon],[previous.lat,previous.lon]);if(seconds>0&&seconds<=120&&d/seconds<=70)distance+=d;}
-          previous=p;
-        }else previous=null;
+          totals.first=totals.first===null?p.time:Math.min(totals.first,p.time);totals.last=totals.last===null?p.time:Math.max(totals.last,p.time);
+          const date=new Date(p.time);totals.days.add([date.getFullYear(),date.getMonth(),date.getDate()].join('-'));
+          if(totals.previous){const seconds=(p.time-totals.previous.time)/1000,d=map.distance([p.lat,p.lon],[totals.previous.lat,totals.previous.lon]);if(seconds>0&&seconds<=120&&d/seconds<=70)totals.distance+=d;}
+          totals.previous=p;
+        }else totals.previous=null;
         cursor.continue();
       };
       req.onerror=()=>resolve(null);
-    });
+    }).finally(()=>{statisticsBusy=null;});
+    return statisticsBusy;
   }
-  window.ETNState={map,country:()=>currentCountry,progress:progressRows,allProgress,statistics,
+  window.ETNState={map,fogPerformance:()=>({...fog.stats}),country:()=>currentCountry,progress:progressRows,allProgress,statistics,
     showCountry(code){const feature=countries.find(f=>f.properties.code===code);if(feature)zoomToCountry(feature);},
     resize(){map.invalidateSize();redraw();if(worldActive)renderWorld();},world:()=>worldActive};
   $('radius').textContent='5 km';
   $('terrain').textContent=t('allDirections');
+  let latestPositionTime=0,presentedTime=null,presentedPoint=null;
+  function presentPosition(point){
+    if(document.hidden)return;
+    if(headingUp&&!worldActive&&course.value!==null)map.setHeading(course.value);
+    const changed=!presentedPoint||presentedPoint[0]!==point[0]||presentedPoint[1]!==point[1];
+    const interval=presentedTime===null?0:(latestPositionTime-presentedTime)/1000;
+    const duration=interval>0&&interval<=3?Math.max(.35,Math.min(1.2,interval)):.6;
+    if(!marker){marker=map.addLocation(point);if(followPosition)map.fitBounds(locationBounds(point),{padding:[40,40],animate:false});}
+    else if(changed){
+      marker.setLatLng(point,{duration});
+      if(followPosition&&!worldActive)map.panTo(point,{animate:true,duration});
+    }
+    presentedTime=latestPositionTime;presentedPoint=point;
+    setCountry({lat:point[0],lng:point[1]});
+    if(worldActive)renderWorld();else $('mapLabel').textContent=t('discovering');
+  }
   function onPosition(position,fromNative=false,render=true){
     if(!storageReady)return;
     const {latitude:lat,longitude:lon,accuracy}=position.coords;
@@ -754,19 +607,10 @@
     if(lastFix&&seconds>0&&distance/seconds>70){
       $('status').textContent=t('gpsJump');return;
     }
-    const heading=course.update(position.coords,now);
-    if(render&&headingUp&&!worldActive&&heading!==null)map.setHeading(heading);
-    latestPosition=point;
-    discoverFix(lat,lon,now);
-    if(render&&!marker){
-      marker=map.addLocation(point);
-      if(followPosition)map.fitBounds(locationBounds(point),{padding:[40,40],animate:false});
-    }
-    else if(render)marker.setLatLng(point);
-    if(render&&followPosition&&!worldActive&&!fromNative&&(!lastFix||distance>=5))
-      map.panTo(point,{animate:true,duration:.35});
-    if(render&&worldActive&&!fromNative)renderWorld();
-    if(render)setCountry({lat,lng:lon});
+    if(now<latestPositionTime)return;
+    latestPositionTime=now;course.update(position.coords,now);
+    latestPosition=point;discoverFix(lat,lon,now);
+    if(render)presentPosition(point);
     if(distance>=10){
       const fix={lat,lon,time:now,accuracy};
       if(Number.isSafeInteger(position.fixId))fix.id=position.fixId;
@@ -781,7 +625,6 @@
       save(lat,lon);lastFix={point,time:now};
       $('status').textContent=t('exploringSaved');
     }else $('status').textContent=t('locationWaiting');
-    if(render&&!worldActive)$('mapLabel').textContent=t('discovering');
   }
   function stop(){
     if(watcher===-1&&native)native.stopTracking();
@@ -815,22 +658,17 @@
           onPosition({coords:{latitude:fix.lat,longitude:fix.lon,accuracy:fix.accuracy,
             speed:fix.speed,heading:fix.bearing,headingAccuracy:fix.bearingAccuracy},
             timestamp:fix.time,fixId:fix.id},
-            true,i===fixes.length-1);
+            true,false);
           acknowledged=fix.id;
+          if(i%100===99)await new Promise(resolve=>setTimeout(resolve,0));
         }
       }finally{importing=false;}
+      if(latestPosition)presentPosition(latestPosition);
       await Promise.all([discovery.flush(),flushStorage()]);
       if(acknowledged){
         redraw();scheduleProgress();
-        if(latestPosition){
-          if(marker)marker.setLatLng(latestPosition);
-          else marker=map.addLocation(latestPosition);
-          setCountry({lat:latestPosition[0],lng:latestPosition[1]});
-        }
         native.ackFixes(acknowledged);
       }
-      if(latestPosition&&followPosition&&!worldActive)
-        map.panTo(latestPosition,{animate:false});
       if(worldActive)renderWorld(false);
       if(fixes.length===1000)setTimeout(syncNative,0);
     }catch{ /* Keep the native queue untouched so it can be retried. */ }
@@ -841,8 +679,8 @@
   window.ETNTrackingDenied=()=>{watcher=null;$('start').disabled=false;$('stop').disabled=true;$('status').textContent=t('locationDenied');};
   window.ETNNotificationDenied=()=>{$('status').textContent=t('notificationDenied');};
   if(native){
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNative();});
-    setInterval(syncNative,500);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(latestPosition)presentPosition(latestPosition);syncNative();}});
+    setInterval(()=>{if(!document.hidden)syncNative();},500);
     syncNative();
   }
   $('start').onclick=()=>{
@@ -857,7 +695,7 @@
     if(!navigator.geolocation){$('status').textContent=t('unsupportedGps');return;}
     watcher=navigator.geolocation.watchPosition(onPosition,error=>{
       $('status').textContent=t(error.code===1?'locationDenied':'locationFailed');
-      stop();
+      if(error.code===1)stop();
     },{enableHighAccuracy:true,maximumAge:0,timeout:20000});
     $('start').disabled=true;$('stop').disabled=false;
     $('status').textContent=t('waitingGps');

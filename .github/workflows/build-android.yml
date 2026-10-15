@@ -16,6 +16,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Verify map and movement controls
         run: |
           node tests/map-controls.test.cjs
@@ -91,6 +94,7 @@ jobs:
             adb shell am start -n lt.tyliaitpk.etn.next/lt.tyliaitpk.etn.MainActivity
             sleep 12
             python3 tests/android-shell-smoke.py
+            node tests/android-performance.cjs
             adb logcat -d -s AndroidRuntime:E | sed '/^---------/d' > evidence/runtime-errors.txt
             test ! -s evidence/runtime-errors.txt
       - uses: actions/upload-artifact@v4

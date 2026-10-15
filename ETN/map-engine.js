@@ -8,6 +8,23 @@
   const shortest=(from,to)=>((to-from+540)%360)-180;
   const lngLat=point=>{const p=L.latLng(point);return[p.lng,p.lat];};
   const distance=(a,b)=>L.CRS.Earth.distance(L.latLng(a),L.latLng(b));
+  function smoothLocation(initial,setPoint){
+    let current=L.latLng(initial),target=null,frame=null;
+    function step(now){
+      const t=Math.min(1,Math.max(0,(now-target.at)/target.duration)),ease=t*t*(3-2*t);
+      current=t===1?target.to:L.latLng([target.from.lat+(target.to.lat-target.from.lat)*ease,
+        target.from.lng+shortest(target.from.lng,target.to.lng)*ease]);setPoint(current);
+      if(t<1)frame=requestAnimationFrame(step);else{target=null;frame=null;}
+    }
+    return{getLatLng:()=>current,setLatLng(point,options={}){
+      const to=L.latLng(point);
+      if(target&&target.to.lat===to.lat&&target.to.lng===to.lng)return this;
+      if(current.lat===to.lat&&current.lng===to.lng&&!target)return this;
+      if(options.animate===false||document.hidden){current=to;target=null;if(frame)cancelAnimationFrame(frame);frame=null;setPoint(current);return this;}
+      target={from:current,to,at:performance.now(),duration:(options.duration??.6)*1000};
+      if(!frame)frame=requestAnimationFrame(step);return this;
+    }};
+  }
   function smoothHeading(map,setBearing){
     let target=null,frame=null,previous=0;
     function step(now){
@@ -51,6 +68,7 @@
       on(events,handler){leaflet.on(events,handler);return this;},
       getBearing:()=>angle(-leaflet.getBearing()),
       getContainer:()=>leaflet.getContainer(),getSize:()=>leaflet.getSize(),
+      getCenter:()=>leaflet.getCenter(),
       getBounds:()=>leaflet.getBounds(),latLngToContainerPoint:p=>leaflet.latLngToContainerPoint(p),
       invalidateSize(){leaflet.invalidateSize();return this;},
       panTo(point,options){leaflet.panTo(point,options);return this;},
@@ -60,8 +78,8 @@
         if(enabled&&!blankEnabled){photo.addTo(leaflet);photo.bringToFront();}
         else if(leaflet.hasLayer(photo))leaflet.removeLayer(photo);
       },
-      addLocation:point=>L.circleMarker(point,{radius:8,color:'#fff',weight:3,
-        fillColor:'#dd785f',fillOpacity:1}).addTo(leaflet)
+      addLocation(point){const marker=L.circleMarker(point,{radius:8,color:'#fff',weight:3,
+        fillColor:'#dd785f',fillOpacity:1}).addTo(leaflet);return smoothLocation(point,p=>marker.setLatLng(p));}
     };
     smoothHeading(map,value=>leaflet.setBearing(-value));return map;
   }
@@ -176,6 +194,7 @@
         }return this;
       },
       getContainer:()=>gl.getContainer(),getBearing:()=>angle(gl.getBearing()),
+      getCenter:()=>gl.getCenter(),
       setHeading(value){if(Number.isFinite(value)){headingTarget=angle(value);startFrame();}return this;},
       getSize(){const c=gl.getContainer();return{x:c.clientWidth,y:c.clientHeight};},
       getBounds(){const b=gl.getBounds();return L.latLngBounds([b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]);},
@@ -200,10 +219,7 @@
       addLocation(point){
         const element=document.createElement('span');element.className='etn-location';
         const marker=new maplibregl.Marker({element}).setLngLat(lngLat(point)).addTo(gl);
-        return{
-          getLatLng(){const p=marker.getLngLat();return L.latLng(p.lat,p.lng);},
-          setLatLng(point){marker.setLngLat(lngLat(point));return this;}
-        };
+        return smoothLocation(point,p=>marker.setLngLat(lngLat(p)));
       }
     };
     return map;

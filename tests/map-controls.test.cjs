@@ -38,6 +38,7 @@ assert.ok(Math.abs(bearing([0,179.99],[0,-179.99])-90)<.01,'course crosses the d
 const frames=[],handlers={},layout=[],paint=[],cameraViews=[];
 let clock=0,center={lng:24,lat:55},zoom=10,currentBearing=359;
 const nodes={map:{clientWidth:390,clientHeight:360,replaceChildren(){}},mapNotice:{hidden:true}};
+const markerPositions=[];
 const latLng=p=>Array.isArray(p)?{lat:p[0],lng:p[1]}:p;
 const bounds=p=>Array.isArray(p)?{
   getWest:()=>p[0][1],getSouth:()=>p[0][0],getEast:()=>p[1][1],getNorth:()=>p[1][0]
@@ -60,9 +61,9 @@ class Renderer{
   cameraForBounds(){return{center:[25,56],zoom:12,bearing:currentBearing};}
   resize(){}
 }
-const mapContext={window:{ETNI18n:{t:key=>key,locale:'lt'}},document:{getElementById:id=>nodes[id]},
+const mapContext={window:{ETNI18n:{t:key=>key,locale:'lt'}},document:{hidden:false,getElementById:id=>nodes[id],createElement:()=>({})},
   L:{latLng,latLngBounds:bounds,CRS:{Earth:{distance}}},
-  maplibregl:{Map:Renderer,NavigationControl:class{},AttributionControl:class{},LngLat:{convert:p=>Array.isArray(p)?{lng:p[0],lat:p[1]}:p}},
+  maplibregl:{Map:Renderer,NavigationControl:class{},AttributionControl:class{},Marker:class{setLngLat(p){markerPositions.push(p);return this;}addTo(){return this;}},LngLat:{convert:p=>Array.isArray(p)?{lng:p[0],lat:p[1]}:p}},
   requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},performance:{now:()=>clock}};
 mapContext.window.maplibregl=mapContext.maplibregl;
 vm.runInNewContext(fs.readFileSync(path.join(root,'ETN/map-engine.js'),'utf8'),mapContext);
@@ -82,6 +83,15 @@ assert.ok(cameraViews.filter(x=>x.bearing!==undefined).every(x=>(x.bearing>=359&
 map.fitBounds([[55,24],[57,26]],{padding:[40,40]});
 for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
 assert.equal(center.lng,25);assert.equal(center.lat,56);assert.equal(zoom,12);
+const location=map.addLocation([55,24]);location.setLatLng([55.001,24.001]);
+assert.equal(location.getLatLng().lat,55,'a new fix does not teleport the marker');
+clock+=300;frames.shift()(clock);assert.ok(location.getLatLng().lat>55&&location.getLatLng().lat<55.001);
+location.setLatLng([55.002,24.002]);assert.ok(location.getLatLng().lat<55.002,'retargeting starts from the displayed position');
+for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
+assert.equal(location.getLatLng().lat,55.002);assert.ok(markerPositions.length>10,'location is interpolated through multiple frames');
+const seamMarker=map.addLocation([0,179.99]);seamMarker.setLatLng([0,-179.99]);clock+=300;frames.shift()(clock);
+assert.ok(Math.abs(seamMarker.getLatLng().lng)>179.98,'location takes the short route across the date line');
+for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
 
 let rasterBearing=270,photoLayer=null,photoAdded=false;
 const leaflet={setView(){return this;},on(){},getBearing:()=>rasterBearing,

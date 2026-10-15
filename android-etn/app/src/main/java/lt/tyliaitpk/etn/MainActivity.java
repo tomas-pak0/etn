@@ -42,6 +42,9 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(0xff090d11);
         getWindow().setNavigationBarColor(0xff090d11);
         webView = new WebView(this);
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
         webView.setBackgroundColor(0xff090d11);
         FrameLayout frame = new FrameLayout(this);
         frame.setBackgroundColor(0xff090d11);
