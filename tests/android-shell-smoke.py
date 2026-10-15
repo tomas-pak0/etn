@@ -19,17 +19,31 @@ def waittap(pattern):
   time.sleep(1)
  return False
 def text():return ' '.join(n.get('text','')+' '+n.get('content-desc','') for n in dump().iter('node'))
+def dismiss_discoveries():
+ # A first fix can discover the country, settlement and administrative center.
+ # Each queued dialog must close before tapping controls underneath it.
+ for _ in range(12):
+  if not tap(r'^Continue exploring$|^Tęsti tyrinėjimą$'):return
+  time.sleep(.4)
+ raise AssertionError('Discovery queue did not close')
+def waittext(pattern):
+ for _ in range(8):
+  if re.search(pattern,text(),re.I):return True
+  time.sleep(1)
+ return False
 time.sleep(3);shot('01-map-shell')
 assert waittap(r'^Start exploring.*|^Pradėti tyrinėjimą.*'),'Start missing'
 assert waittap(r'^OK\s*$'),'Location disclosure missing'
 assert waittap(r'While using the app|While using this app|Naudojant programėlę'),'Location permission missing'
 waittap(r'^Allow\s*$|^Leisti\s*$')
 adb('emu','geo','fix','25.2797','54.6872');time.sleep(5)
-tap(r'^Continue exploring$|^Tęsti tyrinėjimą$');time.sleep(2)
+dismiss_discoveries();time.sleep(2)
 shot('02-exploring')
-assert tap(r'^Hide map$|^Be žemėlapio$'),'Blank map button missing';shot('03-blank-map')
+assert tap(r'^Hide map$|^Be žemėlapio$'),'Blank map button missing'
+assert waittext(r'Show map|Rodyti žemėlapį'),'Blank map switch did not activate'
+shot('03-blank-map')
 assert tap(r'^Explored$|^Ištirta$'),'Explored tab missing';time.sleep(2);shot('04-explored')
-assert 'Lietuva' in text() or 'Lithuania' in text(),'GPS country not set'
+assert waittext(r'Lietuva|Lithuania'),'GPS country not set'
 assert tap(r'^Explorers$|^Tyrinėtojai$'),'Explorers tab missing';time.sleep(3);shot('05-explorers')
 assert re.search(r'Register / sign in|Registruotis / prisijungti',text()),'Optional registration missing'
 assert tap(r'^Information$|^Informacija$'),'Info tab missing';shot('06-information')
