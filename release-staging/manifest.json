@@ -1,0 +1,641 @@
+{
+  "version": "0.7.2",
+  "sourceCommit": "fdf61e6c83f47c39e26c82d758ac9f22be1ae8a4",
+  "buildRunId": 38791199703,
+  "binaries": [
+    {
+      "name": "ETN-0.7.2.apk",
+      "baseline": "ETN-0.6.16.apk",
+      "baselineUrl": "https://github.com/tomas-pak0/etn/releases/download/v0.6.16/ETN-0.6.16.apk",
+      "baselineSha256": "5705f0fedf6ce579f3730c89a578b838fcf66e9f0962abe942e81fc9561f78c0",
+      "patch": "ETN-0.7.2.apk.bsdiff",
+      "patchSha256": "2248e0e446b880689d6a0b0ca4656b30bd5ace4fe59b3d89fda6fd164e6064a0",
+      "sha256": "1d791110d86141247e537ae780799352cfe3e5067c5f7bd03f788ecd8d606de8",
+      "size": 86324136
+    },
+    {
+      "name": "ETN-0.7.2-play.aab",
+      "baseline": "ETN-0.6.16-play.aab",
+      "baselineUrl": "https://github.com/tomas-pak0/etn/releases/download/v0.6.16/ETN-0.6.16-play.aab",
+      "baselineSha256": "ad5bc066b87028fa0660856821290e7ff0554e26faa3bd6fa36b865be6a25ddc",
+      "patch": "ETN-0.7.2-play.aab.bsdiff",
+      "patchSha256": "07bff32c3820565f51a6f11b9f2b4df287d4dd7c556c896edeae670a719c5376",
+      "sha256": "63714b2f93607b5c23887d59bf283a6ee75f5d4dea8b56828bb41a7d6b8d4a58",
+      "size": 86832205
+    }
+  ],
+  "payloads": [
+    {
+      "name": "ETN-0.7.2.apk.bsdiff",
+      "sha256": "2248e0e446b880689d6a0b0ca4656b30bd5ace4fe59b3d89fda6fd164e6064a0",
+      "parts": [
+        {
+          "path": "chunks/ETN-0.7.2.apk.bsdiff.part000",
+          "sha256": "2248e0e446b880689d6a0b0ca4656b30bd5ace4fe59b3d89fda6fd164e6064a0"
+        }
+      ]
+    },
+    {
+      "name": "ETN-0.7.2-play.aab.bsdiff",
+      "sha256": "07bff32c3820565f51a6f11b9f2b4df287d4dd7c556c896edeae670a719c5376",
+      "parts": [
+        {
+          "path": "chunks/ETN-0.7.2-play.aab.bsdiff.part000",
+          "sha256": "a0f015b18c661fb298715b164752a366e5c835791123ab4d2701ef282891ed9e"
+        },
+        {
+          "path": "chunks/ETN-0.7.2-play.aab.bsdiff.part001",
+          "sha256": "440c5a7ef1909c301acff35283808bf40f964c3fadbfe37bb67f5c6e13f5c211"
+        }
+      ]
+    },
+    {
+      "name": "support.zip",
+      "sha256": "87774ac456b2ce548b89bd05044c58dd3bfb7a0447f089a8fcaf2a3658da1be9",
+      "parts": [
+        {
+          "path": "chunks/support.zip.part000",
+          "sha256": "e2b7963d46085e1235cbb97f5e174d31eac4c1cd8558af959ba140e47779a18a"
+        },
+        {
+          "path": "chunks/support.zip.part001",
+          "sha256": "a46236b73890e1947d3662216eed5aefc540c82abce13550b8d0da932ea5374d"
+        }
+      ]
+    }
+  ],
+  "releaseArchive": {
+    "name": "ETN-0.7.2-Google-Play.zip",
+    "sha256": "51cdbd9657eb23d826ff667946aa3c02922ac2060d6d6715177e5ddda8eddfc8",
+    "entries": [
+      {
+        "filename": "ETN-0.7.2-play.aab",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          46
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "source/ETN-0.7.2-source.zip",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          18,
+          8
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "ATNAUJINIMAS-LT.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          18,
+          8
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "SHA256SUMS.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          18,
+          8
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/android-bundle-validation.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          42
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/android-dense-history-performance.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          42
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/android-runtime-errors.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          42
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/android-shell-validation.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          42
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/android-source-commit.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          42
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/apk-alignment.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          46
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/apk-build.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          46
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/apk-metadata.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          46
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/apk-signature-verification.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          46
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/browser-dense-history-performance.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          40
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/browser-ui-validation.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          34
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/bundle-build.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          34
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/bundle-signature-verification.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          38
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/bundle-signing.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          38
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/bundle-validation.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          40
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/dex-compilation.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          28
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/direction-anchor-validation.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          30
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/javascript-tests.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          18,
+          6
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/native-compilation.txt",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          6,
+          24
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/package-integrity.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          18,
+          8
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/source-provenance.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          18,
+          8
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/world-direction-anchor-validation.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          30
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      },
+      {
+        "filename": "verification/world-view-performance.json",
+        "date_time": [
+          2026,
+          10,
+          15,
+          22,
+          17,
+          34
+        ],
+        "compress_type": 8,
+        "comment": "",
+        "extra": "",
+        "create_system": 3,
+        "create_version": 20,
+        "extract_version": 20,
+        "flag_bits": 0,
+        "volume": 0,
+        "internal_attr": 0,
+        "external_attr": 2175008768
+      }
+    ],
+    "compressionLevel": 6
+  }
+}

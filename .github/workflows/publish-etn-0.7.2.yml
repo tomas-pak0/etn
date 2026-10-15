@@ -1,0 +1,29 @@
+name: Publish verified ETN 0.7.2
+on:
+  push:
+    branches: ['etn-release-0.7.2']
+    paths: ['release-staging/**', '.github/workflows/publish-etn-0.7.2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: publish-etn-0.7.2
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deterministic binary patch reader
+        run: python3 -m pip install --disable-pip-version-check bsdiff4==1.2.6
+      - name: Verify Android result, restore signed files and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release-staging/publish_release.py
