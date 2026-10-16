@@ -46,7 +46,9 @@ async function waitFor(expression){for(let i=0;i<150;i++){try{if(await evaluate(
  assert.ok(result.markerIntermediateFrames>2,'Location must move through intermediate positions');
  assert.ok(Math.abs(result.markerEnd-55.002)<1e-9,'Location reaches the GPS fix');
  const turning=await evaluate(`new Promise(resolve=>{
-   const map=ETNState.map,gl=map.renderer,start=performance.now(),base=map.getBearing(),samples=[];
+   const map=ETNState.map,gl=map.renderer,point=ETNState.locationPoint();
+   if(point)gl.jumpTo({center:gl.unproject([point.x+80,point.y-50])});
+   const start=performance.now(),base=map.getBearing(),samples=[];
    let tick=0,maxRayError=0,rayChecks=0;map.setHeading(base+20,{duration:1});
    const timer=setInterval(()=>{tick++;if(tick<4)map.setHeading(base+20*(tick+1),{duration:1});},1000);
    function rendered(){
