@@ -18,6 +18,7 @@ async function providerRequest(path:string,init:RequestInit={}){
 let cachedConfig:{at:number;value:AuthConfig}|null=null;
 export async function publicAuthConfig():Promise<AuthConfig>{
   const disabled={enabled:false,url:'',publishableKey:'',providers:{google:false,facebook:false,email:false}};
+  if(env.SUPABASE_AUTH_READY==='false')return disabled;
   try{
     const{url,key}=settings();if(cachedConfig&&Date.now()-cachedConfig.at<60000)return cachedConfig.value;
     const response=await providerRequest('settings');if(!response.ok)return disabled;

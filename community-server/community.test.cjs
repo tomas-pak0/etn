@@ -19,6 +19,9 @@ const {api,digest}=context.exports,origin='https://test.example';
 async function call(path,method='GET',body,token,otherOrigin=origin){const headers={'Origin':otherOrigin,'cf-connecting-ip':identity?.userId||'visitor'};if(token)headers.Authorization='Bearer '+token;else if(identity){const key='web-'+identity.userId;users.set(key,{id:identity.userId,email:identity.email,email_confirmed_at:identity.unverified?null:'2026-10-16T01:00:00Z'});headers.Authorization='Bearer '+key;}if(body!==undefined)headers['Content-Type']='application/json';const response=await api(new Request(origin+'/api/'+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)}),path.split('?')[0]);return{status:response.status,headers:response.headers,data:await response.json()};}
 (async()=>{
  const accounts=[];
+ authEnv.SUPABASE_AUTH_READY='false';
+ const pending=await call('auth/config');assert.equal(pending.data.enabled,false);assert.equal(pending.data.publishableKey,'','pending provider configuration stays inactive');
+ delete authEnv.SUPABASE_AUTH_READY;
  const config=await call('auth/config');assert.equal(config.data.providers.google,true);assert.equal(config.data.providers.facebook,true);assert.equal(config.data.providers.email,true);
  identity={userId:'00000000-0000-4000-8000-999999999999',email:'unverified@example.com',unverified:true};
  assert.equal((await call('profile','POST',{nickname:'Unverified',homeCountry:'LT',consent:true})).status,403,'an unverified email cannot create a profile');
