@@ -45,6 +45,35 @@ async function waitFor(expression){for(let i=0;i<150;i++){try{if(await evaluate(
  assert.ok(result.fogAfter.paints-result.fogBefore.paints<30,'Movement must reuse snapshots');
  assert.ok(result.markerIntermediateFrames>2,'Location must move through intermediate positions');
  assert.ok(Math.abs(result.markerEnd-55.002)<1e-9,'Location reaches the GPS fix');
+ const turning=await evaluate(`new Promise(resolve=>{
+   const map=ETNState.map,gl=map.renderer,start=performance.now(),base=map.getBearing(),samples=[];
+   let tick=0,maxRayError=0,rayChecks=0;map.setHeading(base+20,{duration:1});
+   const timer=setInterval(()=>{tick++;if(tick<4)map.setHeading(base+20*(tick+1),{duration:1});},1000);
+   function rendered(){
+     const time=performance.now()-start;samples.push({time,bearing:map.getBearing()});
+     if(samples.length%8===0){
+       const p=ETNState.locationPoint(),box=document.getElementById('cardinalOverlay').getBoundingClientRect();
+       if(p)[...document.querySelectorAll('.cardinal-overlay>span')].forEach((node,i)=>{
+         if(node.hidden)return;const r=node.getBoundingClientRect(),dx=r.left+r.width/2-box.left-p.x,dy=r.top+r.height/2-box.top-p.y,a=(i*15-map.getBearing())*Math.PI/180;
+         maxRayError=Math.max(maxRayError,Math.abs(dx*(-Math.cos(a))-dy*Math.sin(a)));rayChecks++;
+       });
+     }
+     if(time>4100){clearInterval(timer);gl.off('render',rendered);resolve({samples,maxRayError,rayChecks});}
+   }
+   gl.on('render',rendered);setTimeout(()=>{gl.triggerRepaint();},4200);
+ })`);
+ const early=[],late=[];
+ for(let i=1;i<turning.samples.length;i++){
+   const a=turning.samples[i-1],b=turning.samples[i],mid=(a.time+b.time)/2,phase=mid%1000;
+   if(mid<1000||mid>3900||Math.floor(a.time/1000)!==Math.floor(b.time/1000))continue;
+   const rate=(((b.bearing-a.bearing+540)%360)-180)*1000/(b.time-a.time);
+   if(phase>=150&&phase<=400)early.push(rate);if(phase>=600&&phase<=850)late.push(rate);
+ }
+ const mean=values=>values.reduce((a,b)=>a+b,0)/values.length,turnReport={renderedFrames:turning.samples.length,earlyDegreesPerSecond:mean(early),lateDegreesPerSecond:mean(late),maxRayError:turning.maxRayError,rayChecks:turning.rayChecks};
+ assert.ok(early.length>2&&late.length>2,'the 1 Hz course test must observe early and late frames');
+ assert.ok(turnReport.lateDegreesPerSecond/turnReport.earlyDegreesPerSecond>.55,'rotation must continue evenly through the end of each GPS interval');
+ assert.ok(turnReport.rayChecks>0&&turnReport.maxRayError<1,'rendered directions must intersect the GPS marker during the same map frame');
+ fs.writeFileSync('evidence/heading-continuity.json',JSON.stringify(turnReport,null,2)+'\n');
  assert.deepEqual(exceptions,[],'Unhandled WebView errors');
  fs.writeFileSync('evidence/dense-history-performance.json',JSON.stringify(result,null,2)+'\n');
  execFileSync('adb',['exec-out','screencap','-p'],{stdio:['ignore',fs.openSync('evidence/08-dense-history.png','w'),'inherit']});

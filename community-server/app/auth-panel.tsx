@@ -1,0 +1,30 @@
+'use client';
+import {useState} from 'react';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import type {AuthConfig} from './explorer-auth';
+import {callbackUrl} from './auth-client';
+const words={
+ lt:{google:'Tęsti su Google',facebook:'Tęsti su Facebook',email:'El. paštas',password:'Slaptažodis',register:'Registruotis',login:'Prisijungti',sent:'Patikrink el. paštą ir atidaryk patvirtinimo nuorodą. Tada prisijunk. Paskyra bus aktyvi tik patvirtinus adresą.',resend:'Siųsti patvirtinimą dar kartą',confirm:'Pirmiausia patvirtink el. pašto adresą.',error:'Prisijungti nepavyko. Patikrink duomenis arba bandyk vėliau.',unavailable:'Prisijungimas laikinai nepasiekiamas. ETN galima tyrinėti be paskyros.',forgot:'Pamiršau slaptažodį',resetSent:'Slaptažodžio atkūrimo nuoroda išsiųsta, jei toks adresas užregistruotas.',minimum:'Bent 10 simbolių',notice:'El. pašto adresą patvirtinsi gautame laiške. Jis reitinguose nebus rodomas.'},
+ en:{google:'Continue with Google',facebook:'Continue with Facebook',email:'Email',password:'Password',register:'Register',login:'Sign in',sent:'Open the verification link in your email, then sign in. Your account becomes active only after you verify the address.',resend:'Resend verification',confirm:'Verify your email address first.',error:'Could not sign in. Check your details or try again later.',unavailable:'Sign-in is temporarily unavailable. You can explore ETN without an account.',forgot:'Forgot password',resetSent:'A password reset link has been sent if the address is registered.',minimum:'At least 10 characters',notice:'Verify your email using the link we send. Your address is never shown in rankings.'},
+ ru:{google:'Продолжить с Google',facebook:'Продолжить с Facebook',email:'Эл. почта',password:'Пароль',register:'Регистрация',login:'Войти',sent:'Откройте ссылку подтверждения в письме, затем войдите. Аккаунт активируется только после подтверждения адреса.',resend:'Отправить подтверждение ещё раз',confirm:'Сначала подтвердите адрес электронной почты.',error:'Не удалось войти. Проверьте данные или повторите позже.',unavailable:'Вход временно недоступен. ETN можно использовать без аккаунта.',forgot:'Забыли пароль',resetSent:'Если адрес зарегистрирован, письмо для восстановления отправлено.',minimum:'Не менее 10 символов',notice:'Подтвердите адрес по ссылке в письме. Адрес не отображается в рейтингах.'}
+};
+export default function AuthPanel({client,config,lang}:{client:SupabaseClient|null;config:AuthConfig|null;lang:'lt'|'en'|'ru'}){
+ const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[mode,setMode]=useState<'login'|'register'>('register'),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[verification,setVerification]=useState(false);const t=words[lang];
+ async function social(provider:'google'|'facebook'){
+  if(!client||busy)return;setBusy(true);setMessage('');
+  try{const{error}=await client.auth.signInWithOAuth({provider,options:{redirectTo:callbackUrl(),...(provider==='facebook'?{scopes:'email'}:{queryParams:{prompt:'select_account'}})}});if(error)throw error;}
+  catch{setMessage(t.error);setBusy(false);}
+ }
+ async function submit(event:React.FormEvent){
+  event.preventDefault();if(!client||busy)return;setBusy(true);setMessage('');
+  try{
+   const result=mode==='register'?await client.auth.signUp({email,password,options:{emailRedirectTo:callbackUrl()}}):await client.auth.signInWithPassword({email,password});
+   if(result.error){if(result.error.code==='email_not_confirmed'){setVerification(true);setMessage(t.confirm);}else setMessage(t.error);return;}
+   setPassword('');if(mode==='register'){setVerification(true);setMessage(t.sent);setMode('login');}
+  }catch{setMessage(t.error);}finally{setBusy(false);}
+ }
+ async function resend(){if(!client||busy||!email)return;setBusy(true);try{const{error}=await client.auth.resend({type:'signup',email,options:{emailRedirectTo:callbackUrl()}});setMessage(error?t.error:t.sent);}catch{setMessage(t.error);}finally{setBusy(false);}}
+ async function reset(){if(!client||busy||!email)return;setBusy(true);try{const{error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/auth/reset'});setMessage(error?t.error:t.resetSent);}catch{setMessage(t.error);}finally{setBusy(false);}}
+ const available=!!client&&!!config?.enabled;
+ return <section className="auth-panel"><div className="social-auth"><button type="button" className="button social-google" disabled={busy||!available||!config?.providers.google} onClick={()=>social('google')}>{t.google}</button><button type="button" className="button social-facebook" disabled={busy||!available||!config?.providers.facebook} onClick={()=>social('facebook')}>{t.facebook}</button></div>{!available?<p role="status" className="hint">{t.unavailable}</p>:null}{config?.providers.email&&<><div className="auth-tabs" role="group" aria-label={t.email}><button type="button" aria-pressed={mode==='register'} onClick={()=>{setMode('register');setMessage('');}}>{t.register}</button><button type="button" aria-pressed={mode==='login'} onClick={()=>{setMode('login');setMessage('');}}>{t.login}</button></div><form onSubmit={submit}><label>{t.email}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" maxLength={254}/></label><label>{t.password}<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required minLength={mode==='register'?10:1} maxLength={128} autoComplete={mode==='register'?'new-password':'current-password'}/>{mode==='register'&&<small>{t.minimum}</small>}</label><p className="hint">{t.notice}</p><button className="button" disabled={busy}>{busy?'…':mode==='register'?t.register:t.login}</button></form><div className="account-actions">{verification&&<button type="button" disabled={busy||!email} onClick={resend}>{t.resend}</button>}<button type="button" disabled={busy||!email} onClick={reset}>{t.forgot}</button></div></>}<p className="status" role="status">{message}</p></section>;
+}

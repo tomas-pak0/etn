@@ -221,7 +221,7 @@
     try{localStorage.setItem('etn-photo-v1',String(photoEnabled));}catch{}
     updatePhoto();
   };
-  map.on('rotate',updateCompass);updateCompass();updatePhoto();
+  map.on(map.engine==='vector'?'render':'rotate',updateCompass);updateCompass();updatePhoto();
   const countryNames=typeof Intl.DisplayNames==='function'
     ?new Intl.DisplayNames([locale],{type:'region'}):null;
   const countryName=feature=>{
@@ -589,14 +589,14 @@
   let latestPositionTime=0,presentedTime=null,presentedPoint=null;
   function presentPosition(point){
     if(document.hidden)return;
-    if(headingUp&&!worldActive&&course.value!==null)map.setHeading(course.value);
     const changed=!presentedPoint||presentedPoint[0]!==point[0]||presentedPoint[1]!==point[1];
     const interval=presentedTime===null?0:(latestPositionTime-presentedTime)/1000;
-    const duration=interval>0&&interval<=3?Math.max(.35,Math.min(1.2,interval)):.6;
+    const duration=interval>0&&interval<=3?Math.max(.35,Math.min(2.5,interval)):1;
+    if(headingUp&&!worldActive&&course.value!==null)map.setHeading(course.value,{duration});
     if(!marker){marker=map.addLocation(point);if(followPosition)map.fitBounds(locationBounds(point),{padding:[40,40],animate:false});}
     else if(changed){
-      marker.setLatLng(point,{duration});
-      if(followPosition&&!worldActive)map.panTo(point,{animate:true,duration});
+      marker.setLatLng(point,{duration,linear:true});
+      if(followPosition&&!worldActive)map.panTo(point,{animate:true,duration,linear:true});
     }
     presentedTime=latestPositionTime;presentedPoint=point;
     window.dispatchEvent(new Event('etn-location'));

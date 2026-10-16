@@ -11,7 +11,7 @@
   function smoothLocation(initial,setPoint){
     let current=L.latLng(initial),target=null,frame=null;
     function step(now){
-      const t=Math.min(1,Math.max(0,(now-target.at)/target.duration)),ease=t*t*(3-2*t);
+      const t=Math.min(1,Math.max(0,(now-target.at)/target.duration)),ease=target.linear?t:t*t*(3-2*t);
       current=t===1?target.to:L.latLng([target.from.lat+(target.to.lat-target.from.lat)*ease,
         target.from.lng+shortest(target.from.lng,target.to.lng)*ease]);setPoint(current);
       window.dispatchEvent?.(new Event('etn-location'));
@@ -22,24 +22,19 @@
       if(target&&target.to.lat===to.lat&&target.to.lng===to.lng)return this;
       if(current.lat===to.lat&&current.lng===to.lng&&!target)return this;
       if(options.animate===false||document.hidden){current=to;target=null;if(frame)cancelAnimationFrame(frame);frame=null;setPoint(current);return this;}
-      target={from:current,to,at:performance.now(),duration:(options.duration??.6)*1000};
+      target={from:current,to,at:performance.now(),duration:Math.max(1,(options.duration??.6)*1000),linear:!!options.linear};
       if(!frame)frame=requestAnimationFrame(step);return this;
     }};
   }
   function smoothHeading(map,setBearing){
-    let target=null,frame=null,previous=0;
+    const motion=window.ETNMotion.heading(map.getBearing());let frame=null;
     function step(now){
-      const dt=previous?Math.min(100,now-previous):16;previous=now;
-      const delta=shortest(map.getBearing(),target);
-      if(Math.abs(delta)>.05){
-        setBearing(map.getBearing()+delta*(1-Math.exp(-dt/180)));
-        frame=requestAnimationFrame(step);
-      }else{setBearing(target);frame=null;previous=0;}
+      setBearing(motion.sample(now));
+      frame=motion.active?requestAnimationFrame(step):null;
     }
-    map.setHeading=value=>{
+    map.setHeading=(value,options={})=>{
       if(!Number.isFinite(value))return map;
-      target=angle(value);
-      if(!frame)frame=requestAnimationFrame(step);
+      if(motion.set(value,performance.now(),(options.duration??1)*1000,map.getBearing())&&!frame)frame=requestAnimationFrame(step);
       return map;
     };
   }
@@ -159,29 +154,26 @@
         paint:{'raster-fade-duration':200}},gl.getStyle().layers.find(layer=>layer.type==='symbol')?.id);
       styleReady=true;applyPhoto();
     });
-    let headingTarget=null,camera=null,frame=null,previous=0;
+    const headingMotion=window.ETNMotion.heading(gl.getBearing());let camera=null,frame=null;
     function startFrame(){if(!frame)frame=requestAnimationFrame(cameraFrame);}
     function cameraFrame(now){
-      const dt=previous?Math.min(100,now-previous):16;previous=now;
       const view={};let pending=false;
-      if(headingTarget!==null){
-        const delta=shortest(gl.getBearing(),headingTarget);
-        if(Math.abs(delta)>.05){view.bearing=gl.getBearing()+delta*(1-Math.exp(-dt/180));pending=true;}
-        else if(Math.abs(delta)>0)view.bearing=headingTarget;
+      if(headingMotion.active){
+        view.bearing=headingMotion.sample(now);pending=headingMotion.active;
       }
       if(camera){
-        const fraction=Math.min(1,(now-camera.at)/camera.duration),ease=fraction*fraction*(3-2*fraction);
+        const fraction=Math.min(1,(now-camera.at)/camera.duration),ease=camera.linear?fraction:fraction*fraction*(3-2*fraction);
         view.center=[camera.from.lng+shortest(camera.from.lng,camera.to[0])*ease,
           camera.from.lat+(camera.to[1]-camera.from.lat)*ease];
         view.zoom=camera.zoomFrom+(camera.zoomTo-camera.zoomFrom)*ease;
         if(fraction<1)pending=true;else camera=null;
       }
       if(Object.keys(view).length)gl.jumpTo(view);
-      if(pending)frame=requestAnimationFrame(cameraFrame);else{frame=null;previous=0;}
+      if(pending)frame=requestAnimationFrame(cameraFrame);else frame=null;
     }
-    function moveCamera(center,zoom,duration){
+    function moveCamera(center,zoom,duration,linear=false){
       camera={from:gl.getCenter(),to:center,zoomFrom:gl.getZoom(),zoomTo:zoom,
-        at:performance.now(),duration:Math.max(1,duration)};startFrame();
+        at:performance.now(),duration:Math.max(1,duration),linear};startFrame();
     }
     gl.on('dragstart',()=>{camera=null;});
     gl.on('zoomstart',event=>{if(event.originalEvent)camera=null;});
@@ -197,7 +189,7 @@
       },
       getContainer:()=>gl.getContainer(),getBearing:()=>angle(gl.getBearing()),
       getCenter:()=>gl.getCenter(),
-      setHeading(value){if(Number.isFinite(value)){headingTarget=angle(value);startFrame();}return this;},
+      setHeading(value,options={}){if(headingMotion.set(value,performance.now(),(options.duration??1)*1000,gl.getBearing()))startFrame();return this;},
       getSize(){const c=gl.getContainer();return{x:c.clientWidth,y:c.clientHeight};},
       getBounds(){const b=gl.getBounds();return L.latLngBounds([b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]);},
       latLngToContainerPoint:point=>gl.project(lngLat(point)),
@@ -205,7 +197,7 @@
       panTo(point,options={}){
         const center=lngLat(point);
         if(options.animate===false){camera=null;gl.jumpTo({center});}
-        else moveCamera(center,gl.getZoom(),(options.duration??.35)*1000);
+        else moveCamera(center,gl.getZoom(),(options.duration??.35)*1000,!!options.linear);
         return this;
       },
       fitBounds(bounds,options={}){

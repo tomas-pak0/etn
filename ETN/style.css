@@ -117,3 +117,5 @@ html,body{width:100%;height:100%;overflow:hidden}body{display:flex;flex-directio
 .fog-snapshot{right:auto;bottom:auto;transform-origin:0 0;will-change:transform;contain:strict}
 .fog-gap{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
 .world-location{position:absolute;transform:translate(-50%,-50%);pointer-events:none}
+
+.cardinal-overlay>span{left:0;top:0;will-change:transform}

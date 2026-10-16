@@ -72,6 +72,8 @@
     if(pending){location.assign(pending.url);return;}
     starting=true;$('accountStatus').textContent=t('loading');
     try{
+      const authConfig=await api('auth/config',{auth:false});
+      if(!authConfig.enabled||!Object.values(authConfig.providers||{}).some(Boolean)){$('accountStatus').textContent=t('authUnavailable');return;}
       const bytes=crypto.getRandomValues(new Uint8Array(32)),verifier=Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
       const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)),verifierHash=Array.from(new Uint8Array(hash),x=>x.toString(16).padStart(2,'0')).join('');
       const result=await api('device/start',{method:'POST',auth:false,body:{verifierHash}});

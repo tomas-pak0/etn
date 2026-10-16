@@ -1,6 +1,6 @@
 # ETN – Explore the Neighborhood
 
-## ETN 0.7.2
+## ETN 0.7.3
 
 Pasaulio krypčių padalos remiasi esamos vietos žymekliu, įskaitant GPS animaciją, žemėlapio slinkimą ir pasukimą.
 
@@ -9,7 +9,7 @@ Fiksuota viršutinė juosta ir keturi apatinio meniu skirtukai: Žemėlapis, Iš
 Pasirenkama paskyra: „ChatGPT“ prisijungimas naršyklėje, ETN slapyvardis ir kilmės šalis. Telefonas patvirtinamas 10 minučių galiojančia užklausa ir sutampančiu šešiaženkliu kodu. Serveriui siunčiami tik šalių ištirti procentai. GPS taškai ir maršrutai lieka telefone. Reitingas parenkamas pagal GPS šalį, rodo pirmus 10 ir tikrą savo vietą papildomoje eilutėje. Vėliava nepriklauso nuo GPS šalies. Paskyra ir jos vieši rezultatai ištrinami iš programėlės arba paskyros puslapio.
 
 Paslauga: https://etn-explorers.t0m45-p4k0.chatgpt.site
-Android: versionCode 39, versionName 0.7.2, tas pats applicationId ir pasirašymo raktas.
+Android: versionCode 40, versionName 0.7.3, tas pats applicationId ir pasirašymo raktas.
 
 Patikros: `node tests/interface.test.cjs`, `node tests/fog.test.cjs`, ankstesni map-controls/support/entitlements testai; serverio 12 vartotojų integracinė patikra (autentifikacija, top 10 ir tikra 12 vieta, vėliava, didėjantis sinchronizavimas, ištrynimas).
 

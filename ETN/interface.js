@@ -57,13 +57,14 @@
     marks.forEach((node,i)=>{
       const p=window.ETNDirections.edgePoint(origin,i*15-bearing,width,height);
       node.hidden=!p;if(!p)return;
-      node.style.left=p.x+'px';node.style.top=p.y+'px';
-      node.style.transform='translate(-50%,-50%)'+(i%3?' rotate('+(i*15-bearing)+'deg)':'');
+      node.style.transform='translate3d('+p.x+'px,'+p.y+'px,0) translate(-50%,-50%)'+(i%3?' rotate('+(i*15-bearing)+'deg)':'');
     });
   }
   let cardinalFrame=null;
   function scheduleCardinals(){if(!cardinalFrame&&page==='pageMap'&&!document.hidden)cardinalFrame=requestAnimationFrame(cardinals);}
-  state.map.on('move zoom rotate resize',scheduleCardinals);new ResizeObserver(scheduleCardinals).observe(overlay);$('worldButton').addEventListener('click',scheduleCardinals);
+  function renderedCardinals(){if(page!=='pageMap'||document.hidden)return;if(cardinalFrame)cancelAnimationFrame(cardinalFrame);cardinals();}
+  state.map.on(state.map.engine==='vector'?'render':'move zoom rotate',renderedCardinals);
+  state.map.on('resize',scheduleCardinals);new ResizeObserver(scheduleCardinals).observe(overlay);$('worldButton').addEventListener('click',scheduleCardinals);
   $('worldView').addEventListener('scroll',scheduleCardinals,{passive:true});
   window.addEventListener('etn-location',scheduleCardinals);
   window.addEventListener('etn-progress',()=>{if(page==='pageExplored')statistics();});

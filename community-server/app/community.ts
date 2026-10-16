@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { getChatGPTUser } from './chatgpt-auth';
+import { AuthError,publicAuthConfig,verifiedIdentity,requireAccountDeletion,deleteAuthIdentity } from './explorer-auth';
 export const countryCodes='AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW'.split(' ');
 const codes=new Set(countryCodes);
 export const validCountry=(code:unknown):code is string=>typeof code==='string'&&codes.has(code);
@@ -19,7 +19,7 @@ async function body(request:Request){
 }
 async function webIdentity(request:Request){
   if(request.headers.get('origin')!==new URL(request.url).origin)throw new ApiError(403,'Origin not allowed');
-  const user=await getChatGPTUser();if(!user)throw new ApiError(401,'Sign in required');return user.userId;
+  return verifiedIdentity(request);
 }
 async function mobileIdentity(request:Request,required=true){
   const token=request.headers.get('authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
@@ -38,6 +38,7 @@ async function removeAccount(id:string){await db().batch([
   db().prepare('DELETE FROM scores WHERE user_id=?').bind(id),db().prepare('DELETE FROM profiles WHERE user_id=?').bind(id)]);}
 async function handle(request:Request,path:string){
   const now=Date.now(),url=new URL(request.url),method=request.method;
+  if(method==='GET'&&path==='auth/config')return publicAuthConfig();
   if(method==='POST'&&path==='device/start'){
     await rate(request,'device',12,600);const data=await body(request);
     if(!/^[a-f0-9]{64}$/.test(data.verifierHash))throw new ApiError(400,'Invalid verifier');
@@ -65,7 +66,7 @@ async function handle(request:Request,path:string){
     if(!result.meta.changes)throw new ApiError(410,'Request expired or already used');return {ok:true};
   }
   if(method==='GET'&&path==='profile'){
-    const user=await getChatGPTUser();if(!user)throw new ApiError(401,'Sign in required');const p=await profile(user.userId);return {profile:p?publicProfile(p):null};
+    const id=await verifiedIdentity(request),p=await profile(id);return {profile:p?publicProfile(p):null};
   }
   if(method==='POST'&&path==='profile'){
     const id=await webIdentity(request),data=await body(request),nickname=typeof data.nickname==='string'?data.nickname.trim().normalize('NFKC'):'';
@@ -92,7 +93,12 @@ async function handle(request:Request,path:string){
   if(method==='POST'&&path==='logout'){
     await mobileIdentity(request);const hash=await digest(request.headers.get('authorization')!.slice(7));await db().batch([db().prepare('DELETE FROM devices WHERE token_hash=?').bind(hash),db().prepare('DELETE FROM challenges WHERE verifier_hash=?').bind(hash)]);return {ok:true};
   }
-  if(method==='DELETE'&&path==='account'){const id=request.headers.has('authorization')?await mobileIdentity(request):await webIdentity(request);await removeAccount(id!);return {ok:true};}
+  if(method==='DELETE'&&path==='account'){
+    const mobile=/^Bearer [a-f0-9]{64}$/.test(request.headers.get('authorization')||'');
+    const id=mobile?await mobileIdentity(request):await webIdentity(request);
+    if(id!.startsWith('supabase:'))requireAccountDeletion();
+    await removeAccount(id!);await deleteAuthIdentity(id!);return {ok:true};
+  }
   throw new ApiError(404,'Not found');
 }
 export async function api(request:Request,path:string){
@@ -100,5 +106,5 @@ export async function api(request:Request,path:string){
   const headers:Record<string,string>={'Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'};
   if(origin&&allowed.has(origin)){headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='Content-Type, Authorization';headers['Access-Control-Allow-Methods']='GET, POST, DELETE, OPTIONS';}
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers});if(origin&&!allowed.has(origin))return Response.json({error:'Origin not allowed'},{status:403,headers});
-  try{return Response.json(await handle(request,path),{headers});}catch(error){if(error instanceof ApiError)return Response.json({error:error.message},{status:error.status,headers});return Response.json({error:'Service temporarily unavailable'},{status:503,headers});}
+  try{return Response.json(await handle(request,path),{headers});}catch(error){if(error instanceof ApiError||error instanceof AuthError)return Response.json({error:error.message},{status:error.status,headers});return Response.json({error:'Service temporarily unavailable'},{status:503,headers});}
 }

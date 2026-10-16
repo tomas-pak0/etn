@@ -66,6 +66,7 @@ const mapContext={window:{ETNI18n:{t:key=>key,locale:'lt'}},document:{hidden:fal
   maplibregl:{Map:Renderer,NavigationControl:class{},AttributionControl:class{},Marker:class{setLngLat(p){markerPositions.push(p);return this;}addTo(){return this;}},LngLat:{convert:p=>Array.isArray(p)?{lng:p[0],lat:p[1]}:p}},
   requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},performance:{now:()=>clock}};
 mapContext.window.maplibregl=mapContext.maplibregl;
+vm.runInNewContext(fs.readFileSync(path.join(root,'ETN/motion.js'),'utf8'),mapContext);
 vm.runInNewContext(fs.readFileSync(path.join(root,'ETN/map-engine.js'),'utf8'),mapContext);
 const map=mapContext.window.ETNMap.create('map');
 map.setPhoto(true);
@@ -78,7 +79,7 @@ map.setHeading(1);
 map.panTo([55.01,24.01],{duration:.35});
 for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
 assert.ok(Math.abs(center.lat-55.01)<1e-8&&Math.abs(center.lng-24.01)<1e-8,'pan reaches its destination during heading animation');
-assert.ok(Math.abs(currentBearing-1)<.01);
+assert.ok(Math.abs(map.getBearing()-1)<.01);
 assert.ok(cameraViews.filter(x=>x.bearing!==undefined).every(x=>(x.bearing>=359&&x.bearing<=361)||x.bearing===1),'heading crosses north using the shortest turn');
 map.fitBounds([[55,24],[57,26]],{padding:[40,40]});
 for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
@@ -108,6 +109,25 @@ fallback.setPhoto(true);assert.equal(photoAdded,true);fallback.setPhoto(false);a
 fallback.setHeading(0);
 for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
 assert.equal(fallback.getBearing(),0);
+
+// GPS course is sampled once a second. Turning must remain uniform near the
+// end of every interval, including while new course samples arrive.
+currentBearing=0;
+const turnSteps=[];
+for(let interval=1;interval<=5;interval++){
+  map.setHeading(interval*20,{duration:1});
+  let previous=currentBearing;
+  for(let i=0;i<50;i++){
+    clock+=20;assert.ok(frames.length,'the complete GPS interval is animated');frames.shift()(clock);
+    turnSteps.push(currentBearing-previous);previous=currentBearing;
+  }
+}
+assert.ok(turnSteps.every(step=>Math.abs(step-.4)<1e-7),'one-second GPS turns keep a constant angular speed instead of settling early');
+assert.equal(currentBearing,100);
+map.setHeading(120,{duration:1});clock+=500;frames.shift()(clock);
+const halfway=currentBearing;
+map.setHeading(120,{duration:1});clock+=500;frames.shift()(clock);
+assert.equal(halfway,110);assert.equal(currentBearing,120,'duplicate held course samples must not restart the turn');
 
 // All ten current languages must supply meaningful accessible controls.
 const ids=new Map();
