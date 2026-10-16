@@ -3,8 +3,16 @@ from pathlib import Path
 Path('evidence').mkdir(exist_ok=True)
 def adb(*args):return subprocess.check_output(['adb',*args])
 def dump():
- adb('shell','uiautomator','dump','/sdcard/ui.xml')
- data=adb('shell','cat','/sdcard/ui.xml');Path('evidence/last-ui.xml').write_bytes(data);return ET.fromstring(data)
+ # Android may kill the standalone dump process during WebView startup.
+ # Retry that process failure; missing controls and assertions still fail.
+ for attempt in range(3):
+  try:
+   subprocess.check_output(['adb','shell','uiautomator','dump','/sdcard/ui.xml'],timeout=20)
+   data=adb('shell','cat','/sdcard/ui.xml');tree=ET.fromstring(data)
+   Path('evidence/last-ui.xml').write_bytes(data);return tree
+  except (subprocess.CalledProcessError,subprocess.TimeoutExpired,ET.ParseError):
+   if attempt==2:raise
+   time.sleep(2)
 def shot(name):Path('evidence/'+name+'.png').write_bytes(adb('exec-out','screencap','-p'))
 def tap(pattern):
  for node in dump().iter('node'):
