@@ -46,7 +46,13 @@ async function waitFor(expression){for(let i=0;i<150;i++){try{if(await evaluate(
  assert.ok(result.markerIntermediateFrames>2,'Location must move through intermediate positions');
  assert.ok(Math.abs(result.markerEnd-55.002)<1e-9,'Location reaches the GPS fix');
  const turning=await evaluate(`new Promise(resolve=>{
-   const map=ETNState.map,gl=map.renderer,point=ETNState.locationPoint();
+   const map=ETNState.map,gl=map.renderer;
+   // The shell test stopped GPS before this page reload. Supply the same
+   // location-marker renderer used by GPS so the directions have an anchor.
+   if(!ETNState.locationPoint()){
+     const location=map.addLocation([55,24]);ETNState.locationPoint=()=>location.getContainerPoint();
+   }
+   const point=ETNState.locationPoint();
    if(point)gl.jumpTo({center:gl.unproject([point.x+80,point.y-50])});
    const start=performance.now(),base=map.getBearing(),samples=[];
    let tick=0,maxRayError=0,rayChecks=0;map.setHeading(base+20,{duration:1});
@@ -71,11 +77,12 @@ async function waitFor(expression){for(let i=0;i<150;i++){try{if(await evaluate(
    const rate=(((b.bearing-a.bearing+540)%360)-180)*1000/(b.time-a.time);
    if(phase>=150&&phase<=400)early.push(rate);if(phase>=600&&phase<=850)late.push(rate);
  }
- const mean=values=>values.reduce((a,b)=>a+b,0)/values.length,turnReport={renderedFrames:turning.samples.length,earlyDegreesPerSecond:mean(early),lateDegreesPerSecond:mean(late),maxRayError:turning.maxRayError,rayChecks:turning.rayChecks};
+ const mean=values=>values.reduce((a,b)=>a+b,0)/values.length,turnReport={renderedFrames:turning.samples.length,earlyDegreesPerSecond:mean(early),lateDegreesPerSecond:mean(late),maxRayError:turning.maxRayError,rayChecks:turning.rayChecks,locationMarker:'instrumented GPS marker renderer'};
+ fs.writeFileSync('evidence/heading-continuity.json',JSON.stringify(turnReport,null,2)+'\n');
+ console.log('Android turn diagnostics: '+JSON.stringify(turnReport));
  assert.ok(early.length>2&&late.length>2,'the 1 Hz course test must observe early and late frames');
  assert.ok(turnReport.lateDegreesPerSecond/turnReport.earlyDegreesPerSecond>.55,'rotation must continue evenly through the end of each GPS interval');
  assert.ok(turnReport.rayChecks>0&&turnReport.maxRayError<1,'rendered directions must intersect the GPS marker during the same map frame');
- fs.writeFileSync('evidence/heading-continuity.json',JSON.stringify(turnReport,null,2)+'\n');
  assert.deepEqual(exceptions,[],'Unhandled WebView errors');
  fs.writeFileSync('evidence/dense-history-performance.json',JSON.stringify(result,null,2)+'\n');
  execFileSync('adb',['exec-out','screencap','-p'],{stdio:['ignore',fs.openSync('evidence/08-dense-history.png','w'),'inherit']});
