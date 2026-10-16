@@ -1,0 +1,10 @@
+{
+  "confirm_sign_up": {
+    "subject": "ETN – patvirtink el. paštą / confirm your email",
+    "file": "confirm-sign-up.html"
+  },
+  "reset_password": {
+    "subject": "ETN – slaptažodžio atkūrimas / reset password",
+    "file": "reset-password.html"
+  }
+}
