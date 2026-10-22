@@ -19,9 +19,9 @@
     }
     return{getLatLng:()=>current,setLatLng(point,options={}){
       const to=L.latLng(point);
-      if(target&&target.to.lat===to.lat&&target.to.lng===to.lng)return this;
       if(current.lat===to.lat&&current.lng===to.lng&&!target)return this;
       if(options.animate===false||document.hidden){current=to;target=null;if(frame)cancelAnimationFrame(frame);frame=null;setPoint(current);return this;}
+      if(target&&target.to.lat===to.lat&&target.to.lng===to.lng)return this;
       target={from:current,to,at:performance.now(),duration:Math.max(1,(options.duration??.6)*1000),linear:!!options.linear};
       if(!frame)frame=requestAnimationFrame(step);return this;
     }};
@@ -34,6 +34,7 @@
     }
     map.setHeading=(value,options={})=>{
       if(!Number.isFinite(value))return map;
+      if(options.animate===false){motion.snap(value);if(frame)cancelAnimationFrame(frame);frame=null;setBearing(value);return map;}
       if(motion.set(value,performance.now(),(options.duration??1)*1000,map.getBearing())&&!frame)frame=requestAnimationFrame(step);
       return map;
     };
@@ -189,7 +190,7 @@
       },
       getContainer:()=>gl.getContainer(),getBearing:()=>angle(gl.getBearing()),
       getCenter:()=>gl.getCenter(),
-      setHeading(value,options={}){if(headingMotion.set(value,performance.now(),(options.duration??1)*1000,gl.getBearing()))startFrame();return this;},
+      setHeading(value,options={}){if(options.animate===false){gl.jumpTo({bearing:headingMotion.snap(value)});return this;}if(headingMotion.set(value,performance.now(),(options.duration??1)*1000,gl.getBearing()))startFrame();return this;},
       getSize(){const c=gl.getContainer();return{x:c.clientWidth,y:c.clientHeight};},
       getBounds(){const b=gl.getBounds();return L.latLngBounds([b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]);},
       latLngToContainerPoint:point=>gl.project(lngLat(point)),
@@ -221,4 +222,5 @@
   }
   window.ETNMap={create};
 })();
+
 

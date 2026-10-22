@@ -92,6 +92,18 @@ public class TrackingService extends Service implements LocationListener {
             return result.toString();
         }
     }
+    // Kept separately from the acknowledged history queue for immediate resume.
+    static String latestFix(Context context) {
+        synchronized (FILE_LOCK) {
+            String latest = context.getSharedPreferences(PREFS, MODE_PRIVATE).getString("latestFix", null);
+            if (latest != null) return latest;
+            try (Cursor cursor = database(context).rawQuery(
+                "SELECT data FROM fixes ORDER BY id DESC LIMIT 1", null)) {
+                if (cursor.moveToFirst()) return cursor.getString(0);
+            } catch (Exception ignored) {}
+            return "null";
+        }
+    }
     static void ackFixes(Context context, long lastId) {
         synchronized (FILE_LOCK) {
             try {
@@ -195,6 +207,10 @@ public class TrackingService extends Service implements LocationListener {
                 android.content.ContentValues values = new android.content.ContentValues();
                 values.put("id", id); values.put("data", fix.toString());
                 database(this).insertOrThrow("fixes", null, values);
+                android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+                if (location.getTime() >= prefs.getLong("latestFixTime", 0))
+                    prefs.edit().putString("latestFix", fix.toString())
+                        .putLong("latestFixTime", location.getTime()).apply();
             } catch (Exception ignored) {}
         }
     }
@@ -211,3 +227,4 @@ public class TrackingService extends Service implements LocationListener {
     }
     @Override public IBinder onBind(Intent intent) { return null; }
 }
+

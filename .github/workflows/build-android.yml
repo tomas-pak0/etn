@@ -30,6 +30,7 @@ jobs:
           node tests/fog.test.cjs
           node tests/interface.test.cjs
           node tests/directions.test.cjs
+          node tests/resume-location.test.cjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -114,3 +115,4 @@ jobs:
           name: ETN-Android-release
           path: release-output/
           retention-days: 7
+

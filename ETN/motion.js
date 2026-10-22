@@ -7,6 +7,7 @@
     let value=initial,target=angle(initial),motion=null;
     return {
       get active(){return motion!==null;},
+      snap(next){value=target=angle(next);motion=null;return value;},
       set(next,now,duration=1000,displayed=value){
         if(!Number.isFinite(next))return false;
         next=angle(next);
@@ -27,3 +28,4 @@
   }
   window.ETNMotion={heading};
 })();
+

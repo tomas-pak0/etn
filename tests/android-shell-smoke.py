@@ -47,7 +47,15 @@ waittap(r'^Allow\s*$|^Leisti\s*$')
 adb('emu','geo','fix','25.2797','54.6872');time.sleep(5)
 dismiss_discoveries();time.sleep(2)
 shot('02-exploring')
-assert tap(r'^Hide map$|^Be žemėlapio$'),'Blank map button missing'
+# Discovery dialogs may arrive after the first GPS fix. Accessibility can still
+# expose the map controls beneath a dialog, so a successful tap is not proof
+# that the switch changed. Close late dialogs and verify the resulting state.
+for attempt in range(8):
+ dismiss_discoveries()
+ if re.search(r'Show map|Rodyti žemėlapį',text(),re.I):break
+ assert tap(r'^Hide map$|^Be žemėlapio$'),'Blank map button missing'
+ time.sleep(1)
+else:raise AssertionError('Blank map switch did not activate')
 assert waittext(r'Show map|Rodyti žemėlapį'),'Blank map switch did not activate'
 shot('03-blank-map')
 assert tap(r'^Explored$|^Ištirta$'),'Explored tab missing';time.sleep(2);shot('04-explored')
