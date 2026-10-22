@@ -64,7 +64,7 @@ class Renderer{
 const mapContext={window:{ETNI18n:{t:key=>key,locale:'lt'}},document:{hidden:false,getElementById:id=>nodes[id],createElement:()=>({})},
   L:{latLng,latLngBounds:bounds,CRS:{Earth:{distance}}},
   maplibregl:{Map:Renderer,NavigationControl:class{},AttributionControl:class{},Marker:class{setLngLat(p){markerPositions.push(p);return this;}addTo(){return this;}},LngLat:{convert:p=>Array.isArray(p)?{lng:p[0],lat:p[1]}:p}},
-  requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},performance:{now:()=>clock}};
+  cancelAnimationFrame:id=>{frames.splice(id-1,1);},requestAnimationFrame:fn=>{frames.push(fn);return frames.length;},performance:{now:()=>clock}};
 mapContext.window.maplibregl=mapContext.maplibregl;
 vm.runInNewContext(fs.readFileSync(path.join(root,'ETN/motion.js'),'utf8'),mapContext);
 vm.runInNewContext(fs.readFileSync(path.join(root,'ETN/map-engine.js'),'utf8'),mapContext);
@@ -94,6 +94,14 @@ const seamMarker=map.addLocation([0,179.99]);seamMarker.setLatLng([0,-179.99]);c
 assert.ok(Math.abs(seamMarker.getLatLng().lng)>179.98,'location takes the short route across the date line');
 for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
 
+// A resume snap must override even an identical in-flight destination.
+location.setLatLng([56,25],{duration:2});
+location.setLatLng([56,25],{animate:false});
+assert.equal(location.getLatLng().lat,56,'resume immediately reaches the live point');
+assert.equal(frames.length,0,'old location interpolation is cancelled');
+map.setHeading(180,{duration:2});map.setHeading(90,{animate:false});
+for(let i=0;frames.length&&i<300;i++){clock+=16;frames.shift()(clock);}
+assert.equal(map.getBearing(),90,'previous heading animation cannot undo resume snap');
 let rasterBearing=270,photoLayer=null,photoAdded=false;
 const leaflet={setView(){return this;},on(){},getBearing:()=>rasterBearing,
   setBearing:value=>{rasterBearing=value;},hasLayer:()=>photoAdded,removeLayer:()=>{photoAdded=false;}};
@@ -140,3 +148,4 @@ for(const [language,dictionary] of Object.entries(i18nContext.window.ETNI18n.dic
     assert.ok(dictionary[key]&&dictionary[key]!==key,language+' missing '+key);
 }
 console.log('Movement, stationary noise, legacy fixes, north crossing, concurrent camera, imagery, upright labels and ten languages passed.');
+

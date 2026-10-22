@@ -72,6 +72,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> TrackingService.setLanguage(MainActivity.this, language));
             }
             @JavascriptInterface public boolean isTracking() { return TrackingService.isRunning(MainActivity.this); }
+            @JavascriptInterface public String latestFix() { return TrackingService.latestFix(MainActivity.this); }
             @JavascriptInterface public String pendingFixes() { return TrackingService.pendingFixes(MainActivity.this); }
             @JavascriptInterface public void ackFixes(long lastId) { TrackingService.ackFixes(MainActivity.this, lastId); }
             @JavascriptInterface public void startTracking() { runOnUiThread(() -> requestTracking()); }
@@ -242,7 +243,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visible = true;
-        if (webView != null) webView.evaluateJavascript("window.ETNSyncNative&&window.ETNSyncNative()", null);
+        if (webView != null) webView.evaluateJavascript("window.ETNResume?window.ETNResume():(window.ETNSyncNative&&window.ETNSyncNative())", null);
     }
     @Override protected void onPause() {
         visible = false;
@@ -278,4 +279,5 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 }
+
 

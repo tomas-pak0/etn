@@ -586,28 +586,47 @@
     resize(){map.invalidateSize();redraw();if(worldActive)renderWorld();},world:()=>worldActive};
   $('radius').textContent='5 km';
   $('terrain').textContent=t('allDirections');
-  let latestPositionTime=0,presentedTime=null,presentedPoint=null;
-  function presentPosition(point){
+  // History has its own clock: importing it must never move the live marker.
+  let latestPositionTime=0,livePositionTime=0,presentedTime=null,presentedPoint=null,snapNextPosition=true;
+  function presentPosition(point,snap=false){
     if(document.hidden)return;
     const changed=!presentedPoint||presentedPoint[0]!==point[0]||presentedPoint[1]!==point[1];
-    const interval=presentedTime===null?0:(latestPositionTime-presentedTime)/1000;
+    const interval=presentedTime===null?0:(livePositionTime-presentedTime)/1000;
     const duration=interval>0&&interval<=3?Math.max(.35,Math.min(2.5,interval)):1;
-    if(headingUp&&!worldActive&&course.value!==null)map.setHeading(course.value,{duration});
+    if(headingUp&&!worldActive&&course.value!==null)map.setHeading(course.value,{duration,animate:!snap});
     if(!marker){marker=map.addLocation(point);if(followPosition)map.fitBounds(locationBounds(point),{padding:[40,40],animate:false});}
-    else if(changed){
-      marker.setLatLng(point,{duration,linear:true});
-      if(followPosition&&!worldActive)map.panTo(point,{animate:true,duration,linear:true});
+    else if(changed||snap){
+      marker.setLatLng(point,{duration,linear:true,animate:!snap});
+      if(followPosition&&!worldActive)map.panTo(point,{animate:!snap,duration,linear:true});
     }
-    presentedTime=latestPositionTime;presentedPoint=point;
+    presentedTime=livePositionTime;presentedPoint=point;
     window.dispatchEvent(new Event('etn-location'));
     setCountry({lat:point[0],lng:point[1]});
     if(worldActive)renderWorld();else $('mapLabel').textContent=t('discovering');
+  }
+  function updateLivePosition(position){
+    const {latitude:lat,longitude:lon,accuracy}=position.coords,time=position.timestamp;
+    if(document.hidden||!Number.isFinite(time)||time<livePositionTime||Date.now()-time>15000||time-Date.now()>5000
+      ||!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180
+      ||!Number.isFinite(accuracy)||accuracy>MAX_ACCURACY)return;
+    if(time===livePositionTime&&!snapNextPosition)return;
+    const snap=snapNextPosition||!livePositionTime||time-livePositionTime>5000;
+    if(snap)course.reset();
+    livePositionTime=time;latestPosition=[lat,lon];course.update(position.coords,time);
+    presentPosition(latestPosition,snap);snapNextPosition=false;
+    $('accuracy').textContent=Math.round(accuracy)+' m';
+  }
+  function refreshNativePosition(){
+    if(!native||!native.latestFix||document.hidden)return;
+    const fix=JSON.parse(native.latestFix());
+    if(fix)updateLivePosition({coords:{latitude:fix.lat,longitude:fix.lon,accuracy:fix.accuracy,
+      speed:fix.speed,heading:fix.bearing,headingAccuracy:fix.bearingAccuracy},timestamp:fix.time});
   }
   function onPosition(position,fromNative=false,render=true){
     if(!storageReady)return;
     const {latitude:lat,longitude:lon,accuracy}=position.coords;
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
-    $('accuracy').textContent=Number.isFinite(accuracy)?Math.round(accuracy)+' m':'–';
+    if(render)$('accuracy').textContent=Number.isFinite(accuracy)?Math.round(accuracy)+' m':'–';
     if(!Number.isFinite(accuracy)||accuracy>MAX_ACCURACY){
       $('status').textContent=t('locationAccuracyWaiting');return;
     }
@@ -618,9 +637,8 @@
       $('status').textContent=t('gpsJump');return;
     }
     if(now<latestPositionTime)return;
-    latestPositionTime=now;course.update(position.coords,now);
-    latestPosition=point;discoverFix(lat,lon,now);
-    if(render)presentPosition(point);
+    latestPositionTime=now;discoverFix(lat,lon,now);
+    if(render)updateLivePosition(position);
     if(distance>=10){
       const fix={lat,lon,time:now,accuracy};
       if(Number.isSafeInteger(position.fixId))fix.id=position.fixId;
@@ -639,7 +657,7 @@
   function stop(){
     if(watcher===-1&&native)native.stopTracking();
     else if(watcher!==null)navigator.geolocation.clearWatch(watcher);
-    watcher=null;lastFix=null;latestPosition=null;trail=[];course.reset();$('start').disabled=false;$('stop').disabled=true;
+    watcher=null;lastFix=null;latestPosition=null;trail=[];course.reset();snapNextPosition=true;livePositionTime=0;$('start').disabled=false;$('stop').disabled=true;
   }
   let nativeStartAt=0;
   let syncing=false;
@@ -653,10 +671,11 @@
         watcher=-1;$('start').disabled=true;$('stop').disabled=false;
         $('status').textContent=t('backgroundTracking');
       }else if(!tracking&&watcher===-1&&Date.now()-nativeStartAt>5000){
-        watcher=null;lastFix=null;latestPosition=null;trail=[];course.reset();
+        watcher=null;lastFix=null;latestPosition=null;trail=[];course.reset();snapNextPosition=true;livePositionTime=0;
         $('start').disabled=false;$('stop').disabled=true;
         $('status').textContent=t('stopped');
       }
+      if(tracking)refreshNativePosition();
       const fixes=JSON.parse(native.pendingFixes());
       if(!Array.isArray(fixes)||!fixes.length)return;
       let acknowledged=0;
@@ -673,7 +692,8 @@
           if(i%100===99)await new Promise(resolve=>setTimeout(resolve,0));
         }
       }finally{importing=false;}
-      if(latestPosition)presentPosition(latestPosition);
+      // Re-read the newest fix after import; never display a historical batch endpoint.
+      if(tracking)refreshNativePosition();
       await Promise.all([discovery.flush(),flushStorage()]);
       if(acknowledged){
         redraw();scheduleProgress();
@@ -685,11 +705,12 @@
     finally{syncing=false;}
   }
   window.ETNSyncNative=syncNative;
+  window.ETNResume=()=>{snapNextPosition=true;syncNative();};
   window.ETNTrackingStarted=()=>{$('status').textContent=t('backgroundTracking');syncNative();};
   window.ETNTrackingDenied=()=>{watcher=null;$('start').disabled=false;$('stop').disabled=true;$('status').textContent=t('locationDenied');};
   window.ETNNotificationDenied=()=>{$('status').textContent=t('notificationDenied');};
   if(native){
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(latestPosition)presentPosition(latestPosition);syncNative();}});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)snapNextPosition=true;else window.ETNResume();});
     setInterval(()=>{if(!document.hidden)syncNative();},500);
     syncNative();
   }
@@ -713,4 +734,5 @@
   $('stop').onclick=()=>{stop();$('status').textContent=t('stopped');};
   $('recenter').onclick=()=>{if(marker){setFollowPosition(true);$('countryPicker').hidden=true;if(worldActive)renderWorld(true);else map.fitBounds(locationBounds(marker.getLatLng()),overviewOptions);}else $('status').textContent=t('noLocation');};
 })();
+
 
